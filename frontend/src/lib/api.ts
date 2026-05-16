@@ -1,0 +1,146 @@
+const API_BASE = "http://127.0.0.1:8000/api";
+
+export interface DatasetInfo {
+  name: string;
+  description: string;
+}
+
+export interface DatasetResponse {
+  columns: string[];
+  suggested_date_col: string | null;
+  suggested_target_col: string | null;
+  total_rows: number;
+  preview_data: any[];
+}
+
+export async function fetchDatasets() {
+  const res = await fetch(`${API_BASE}/datasets`);
+  if (!res.ok) throw new Error("Failed to fetch datasets");
+  return res.json();
+}
+
+export async function loadDataset(name: string): Promise<DatasetResponse> {
+  const res = await fetch(`${API_BASE}/datasets/${name}`);
+  if (!res.ok) throw new Error("Failed to load dataset");
+  return res.json();
+}
+
+export async function uploadDataset(file: File): Promise<DatasetResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  const res = await fetch(`${API_BASE}/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Failed to upload dataset");
+  return res.json();
+}
+
+export interface DiagnosticsRequest {
+  dataset_type: string;
+  dataset_name: string;
+  date_col: string;
+  target_col: string;
+}
+
+export interface DiagnosticsResponse {
+  dates: string[];
+  stl: {
+    observed: number[];
+    trend: number[];
+    seasonal: number[];
+    resid: number[];
+  };
+  forecastability: {
+    score: number;
+    label: string;
+    trend_strength: number;
+    seasonal_strength: number;
+  };
+  acf: number[];
+  pacf: number[];
+}
+
+export async function runDiagnostics(req: DiagnosticsRequest): Promise<DiagnosticsResponse> {
+  const res = await fetch(`${API_BASE}/diagnostics`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to run diagnostics");
+  return res.json();
+}
+
+export interface ValidationRequest {
+  dataset_type: string;
+  dataset_name: string;
+  date_col: string;
+  target_col: string;
+  horizon?: number;
+}
+
+export interface ModelMetrics {
+  model: string;
+  sMAPE: number;
+  MASE: number;
+  RMSE: number;
+}
+
+export interface ValidationResponse {
+  horizon: number;
+  metrics: ModelMetrics[];
+  predictions: {
+    dates: string[];
+    actual: number[];
+    [model_name: string]: string[] | number[];
+  };
+  history: {
+    dates: string[];
+    actual: number[];
+  };
+}
+
+export async function runValidation(req: ValidationRequest): Promise<ValidationResponse> {
+  const res = await fetch(`${API_BASE}/validation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to run backtest validation");
+  return res.json();
+}
+
+export interface ForecastRequest {
+  dataset_type: string;
+  dataset_name: string;
+  date_col: string;
+  target_col: string;
+  model_name: string;
+  horizon?: number;
+}
+
+export interface ForecastResponse {
+  model: string;
+  horizon: number;
+  history: {
+    dates: string[];
+    actual: number[];
+  };
+  forecast: {
+    dates: string[];
+    mean: number[];
+    lower: number[];
+    upper: number[];
+  };
+}
+
+export async function runForecast(req: ForecastRequest): Promise<ForecastResponse> {
+  const res = await fetch(`${API_BASE}/forecast`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to run forecast");
+  return res.json();
+}

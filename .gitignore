@@ -1,0 +1,36 @@
+# Laplace - Root Gitignore
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backend (Python / FastAPI)
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/.coverage
+backend/.env
+
+# Ignore uploaded and generated data, but keep reference datasets
+backend/data/uploads/
+backend/data/results_log.csv
+backend/data/*.xlsx
+# We explicitly want to track the reference datasets:
+!backend/data/air_passengers.csv
+!backend/data/daily_temperatures.csv
+
+# Frontend (React / Vite / node)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# IDEs
+.vscode/
+.idea/
+*.swp
