@@ -11,6 +11,7 @@ class DatasetMeta(BaseModel):
     frequency: Frequency
     n_rows: int
     columns: list[str]
+    domain: str | None = None
 
 
 class ColumnDetection(BaseModel):
@@ -86,10 +87,66 @@ class DiagnosticsRequest(BaseModel):
     name: str
 
 
+class DescriptiveStats(BaseModel):
+    count: int
+    mean: float
+    std: float
+    min: float
+    q1: float
+    median: float
+    q3: float
+    max: float
+    skewness: float
+    kurtosis: float
+    cv: float
+
+
+class HistogramBin(BaseModel):
+    x: float
+    count: int
+
+
+class DistributionResult(BaseModel):
+    histogram: list[HistogramBin]
+    normal_x: list[float]
+    normal_y: list[float]
+    mean: float
+    std: float
+
+
+class RollingStatsResult(BaseModel):
+    rolling_mean: list[float]
+    rolling_std: list[float]
+    window: int
+
+
+class OutlierResult(BaseModel):
+    lower_bound: float
+    upper_bound: float
+    outlier_indices: list[int]
+    outlier_values: list[float]
+    n_outliers: int
+
+
+class StationarityResult(BaseModel):
+    adf_statistic: float
+    adf_pvalue: float
+    kpss_statistic: float
+    kpss_pvalue: float
+    is_stationary: bool
+    verdict: str
+    differenced: list[float]
+
+
 class DiagnosticsResponse(BaseModel):
     stl: STLResult
     acf_pacf: ACFResult
     forecastability: ForecastabilityResult
+    descriptive_stats: DescriptiveStats | None = None
+    distribution: DistributionResult | None = None
+    rolling_stats: RollingStatsResult | None = None
+    outliers: OutlierResult | None = None
+    stationarity: StationarityResult | None = None
 
 
 class ModelForecast(BaseModel):

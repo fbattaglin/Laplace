@@ -23,7 +23,7 @@ test.describe('Full wizard flow with preloaded dataset', () => {
     await compareBtn.click()
 
     // Step 3: Validation — wait for backtest to complete
-    await expect(page.getByText(/Chronos-Bolt|AutoETS|AutoTheta|SeasonalNaive/)).toBeVisible({
+    await expect(page.getByText(/Chronos-2|AutoETS|AutoTheta|SeasonalNaive/)).toBeVisible({
       timeout: 60_000,
     })
     await expect(page.getByText('sMAPE')).toBeVisible()

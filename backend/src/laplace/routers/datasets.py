@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 
 from laplace.models.schemas import (
     DatasetMeta,
@@ -66,17 +66,16 @@ async def upload_dataset(file: UploadFile):
 
 @router.post("/confirm", response_model=TimeSeriesData)
 async def confirm_dataset(selection: DatasetSelection):
+    if selection.source != "preloaded":
+        raise HTTPException(
+            status_code=422,
+            detail="Use /upload/confirm for uploaded files",
+        )
+    if not selection.dataset_name:
+        raise HTTPException(status_code=422, detail="dataset_name required for preloaded source")
+
     try:
-        if selection.source == "preloaded":
-            if not selection.dataset_name:
-                raise HTTPException(status_code=422, detail="dataset_name required for preloaded")
-            df = load_preloaded(selection.dataset_name)
-            name = selection.dataset_name
-        else:
-            raise HTTPException(
-                status_code=422,
-                detail="For uploaded data, use /upload first then /confirm with the response",
-            )
+        df = load_preloaded(selection.dataset_name)
     except (ValueError, FileNotFoundError) as e:
         raise HTTPException(status_code=404, detail=str(e)) from None
 
@@ -86,6 +85,43 @@ async def confirm_dataset(selection: DatasetSelection):
             datetime_col=selection.datetime_col,
             target_col=selection.target_col,
             frequency=selection.frequency,
+            name=selection.dataset_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from None
+
+
+@router.post("/upload/confirm", response_model=TimeSeriesData)
+async def confirm_upload(
+    file: UploadFile,
+    datetime_col: str = Form(...),
+    target_col: str = Form(...),
+    frequency: str | None = Form(default=None),
+):
+    if not file.filename:
+        raise HTTPException(status_code=422, detail="No filename provided")
+
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+
+    try:
+        df = parse_upload(content, file.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from None
+
+    if df.empty:
+        raise HTTPException(status_code=422, detail="File contains no data")
+
+    name = file.filename.rsplit(".", 1)[0]
+    freq = frequency or None
+
+    try:
+        return validate_and_prepare(
+            df=df,
+            datetime_col=datetime_col,
+            target_col=target_col,
+            frequency=freq,
             name=name,
         )
     except ValueError as e:

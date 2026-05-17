@@ -5,7 +5,12 @@ from laplace.models.schemas import (
     ForecastRequest,
     ForecastResponse,
 )
-from laplace.services.forecasting import run_all_models, run_chronos, run_statsforecast
+from laplace.services.forecasting import (
+    run_all_models,
+    run_chronos,
+    run_statsforecast,
+    run_timesfm,
+)
 
 router = APIRouter(prefix="/api", tags=["forecast"])
 
@@ -27,8 +32,10 @@ async def forecast(request: ForecastRequest) -> ForecastResponse:
         )
 
     if request.model_name:
-        if request.model_name == "Chronos-Bolt":
+        if request.model_name == "Chronos-2":
             forecasts = [run_chronos(request.values, horizon)]
+        elif request.model_name == "TimesFM":
+            forecasts = [run_timesfm(request.values, horizon)]
         else:
             sf_results = run_statsforecast(request.values, horizon, request.frequency)
             forecasts = [r for r in sf_results if r.model_name == request.model_name]

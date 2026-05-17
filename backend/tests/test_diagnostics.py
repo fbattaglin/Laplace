@@ -1,7 +1,16 @@
 import numpy as np
 import pytest
 
-from laplace.services.diagnostics import compute_acf_pacf, compute_forecastability, compute_stl
+from laplace.services.diagnostics import (
+    compute_acf_pacf,
+    compute_descriptive_stats,
+    compute_distribution,
+    compute_forecastability,
+    compute_outliers,
+    compute_rolling_stats,
+    compute_stationarity,
+    compute_stl,
+)
 
 
 class TestSTL:
@@ -100,6 +109,81 @@ class TestForecastability:
         assert result["total_score"] > 50
 
 
+class TestDescriptiveStats:
+    def test_basic_values(self):
+        values = list(range(1, 101))
+        result = compute_descriptive_stats(values)
+        assert result["count"] == 100
+        assert result["mean"] == pytest.approx(50.5, abs=0.01)
+        assert result["min"] == 1
+        assert result["max"] == 100
+
+    def test_cv_near_zero_mean_no_crash(self):
+        values = [0.001, 0.002, 0.003]
+        result = compute_descriptive_stats(values)
+        assert "cv" in result
+
+    def test_skewness_symmetric(self):
+        values = list(range(100))
+        result = compute_descriptive_stats(values)
+        assert abs(result["skewness"]) < 0.1
+
+
+class TestDistribution:
+    def test_histogram_bins(self):
+        np.random.seed(0)
+        values = np.random.normal(100, 15, 200).tolist()
+        result = compute_distribution(values)
+        assert len(result["histogram"]) >= 10
+        assert all(b["count"] >= 0 for b in result["histogram"])
+        assert len(result["normal_x"]) == 100
+        assert len(result["normal_y"]) == 100
+
+    def test_constant_series(self):
+        values = [42.0] * 50
+        result = compute_distribution(values)
+        assert "histogram" in result
+
+
+class TestRollingStats:
+    def test_output_lengths_match(self):
+        np.random.seed(0)
+        values = np.random.normal(0, 1, 100).tolist()
+        result = compute_rolling_stats(values, "M")
+        assert len(result["rolling_mean"]) == 100
+        assert len(result["rolling_std"]) == 100
+        assert result["window"] > 0
+
+
+class TestOutliers:
+    def test_detects_obvious_outliers(self):
+        values = [10.0] * 50 + [1000.0] + [10.0] * 49
+        result = compute_outliers(values)
+        assert result["n_outliers"] >= 1
+        assert 50 in result["outlier_indices"]
+
+    def test_clean_series_no_outliers(self):
+        values = list(range(1, 51))
+        result = compute_outliers(values)
+        assert result["n_outliers"] == 0
+
+
+class TestStationarity:
+    def test_white_noise_stationary(self):
+        np.random.seed(42)
+        values = np.random.normal(0, 1, 200).tolist()
+        result = compute_stationarity(values)
+        assert "verdict" in result
+        assert "differenced" in result
+        assert len(result["differenced"]) == len(values) - 1
+
+    def test_random_walk_non_stationary(self):
+        np.random.seed(42)
+        values = np.cumsum(np.random.normal(0, 1, 100)).tolist()
+        result = compute_stationarity(values)
+        assert not result["is_stationary"]
+
+
 @pytest.mark.asyncio
 async def test_diagnostics_endpoint(client):
     # First load airline data
@@ -115,9 +199,17 @@ async def test_diagnostics_endpoint(client):
     assert "stl" in data
     assert "acf_pacf" in data
     assert "forecastability" in data
+    assert "descriptive_stats" in data
+    assert "distribution" in data
+    assert "rolling_stats" in data
+    assert "outliers" in data
+    assert "stationarity" in data
     assert len(data["stl"]["trend"]) == 144
     assert len(data["acf_pacf"]["acf_values"]) > 10
     assert 0 <= data["forecastability"]["total_score"] <= 100
+    assert data["descriptive_stats"]["count"] == 144
+    assert len(data["distribution"]["histogram"]) > 0
+    assert data["stationarity"]["verdict"] != ""
 
 
 @pytest.mark.asyncio

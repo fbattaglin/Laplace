@@ -18,6 +18,7 @@ export interface DatasetMeta {
   frequency: Frequency
   n_rows: number
   columns: string[]
+  domain?: string
 }
 
 export interface ColumnDetection {
@@ -63,10 +64,66 @@ export interface ForecastabilityResult {
   details: { trend_strength: number; seasonal_strength: number }
 }
 
+export interface DescriptiveStats {
+  count: number
+  mean: number
+  std: number
+  min: number
+  q1: number
+  median: number
+  q3: number
+  max: number
+  skewness: number
+  kurtosis: number
+  cv: number
+}
+
+export interface HistogramBin {
+  x: number
+  count: number
+}
+
+export interface DistributionResult {
+  histogram: HistogramBin[]
+  normal_x: number[]
+  normal_y: number[]
+  mean: number
+  std: number
+}
+
+export interface RollingStatsResult {
+  rolling_mean: number[]
+  rolling_std: number[]
+  window: number
+}
+
+export interface OutlierResult {
+  lower_bound: number
+  upper_bound: number
+  outlier_indices: number[]
+  outlier_values: number[]
+  n_outliers: number
+}
+
+export interface StationarityResult {
+  adf_statistic: number
+  adf_pvalue: number
+  kpss_statistic: number
+  kpss_pvalue: number
+  is_stationary: boolean
+  verdict: string
+  differenced: number[]
+}
+
 export interface DiagnosticsResponse {
   stl: STLResult
   acf_pacf: ACFResult
   forecastability: ForecastabilityResult
+  descriptive_stats?: DescriptiveStats
+  distribution?: DistributionResult
+  rolling_stats?: RollingStatsResult
+  outliers?: OutlierResult
+  stationarity?: StationarityResult
 }
 
 export interface ModelForecast {

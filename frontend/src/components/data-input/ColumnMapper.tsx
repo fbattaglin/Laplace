@@ -1,18 +1,29 @@
 import { useState } from 'react'
 
-import { useConfirmDataset } from '../../hooks/useApi'
+import { useConfirmUpload } from '../../hooks/useApi'
 import type { UploadResponse } from '../../types'
+
+const FREQUENCIES = [
+  { value: '', label: 'Auto-detect' },
+  { value: 'H', label: 'Hourly' },
+  { value: 'D', label: 'Daily' },
+  { value: 'W', label: 'Weekly' },
+  { value: 'M', label: 'Monthly' },
+  { value: 'Q', label: 'Quarterly' },
+  { value: 'Y', label: 'Annual' },
+]
 
 interface Props {
   uploadResponse: UploadResponse
-  fileName: string
+  file: File
 }
 
-export function ColumnMapper({ uploadResponse, fileName }: Props) {
+export function ColumnMapper({ uploadResponse, file }: Props) {
   const { columns, detected } = uploadResponse
   const [datetimeCol, setDatetimeCol] = useState(detected.datetime_col || columns[0])
   const [targetCol, setTargetCol] = useState(detected.target_col || columns[1] || columns[0])
-  const confirm = useConfirmDataset()
+  const [frequency, setFrequency] = useState('')
+  const confirm = useConfirmUpload()
 
   const numericColumns = columns.filter((col) => {
     const dtype = uploadResponse.dtypes[col]
@@ -21,16 +32,17 @@ export function ColumnMapper({ uploadResponse, fileName }: Props) {
 
   const handleConfirm = () => {
     confirm.mutate({
-      source: 'upload',
+      file,
       datetime_col: datetimeCol,
       target_col: targetCol,
+      frequency: frequency || undefined,
     })
   }
 
   return (
     <div className="bg-surface rounded-xl p-6">
       <h3 className="font-medium text-primary mb-4">
-        Confirm Columns — {fileName}
+        Confirm Columns — {file.name}
       </h3>
 
       {detected.confidence > 0.7 && (
@@ -39,7 +51,7 @@ export function ColumnMapper({ uploadResponse, fileName }: Props) {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div>
           <label className="block text-sm text-secondary mb-1">Date/Time Column</label>
           <select
@@ -64,6 +76,20 @@ export function ColumnMapper({ uploadResponse, fileName }: Props) {
             {(numericColumns.length > 0 ? numericColumns : columns).map((col) => (
               <option key={col} value={col}>
                 {col}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm text-secondary mb-1">Frequency</label>
+          <select
+            value={frequency}
+            onChange={(e) => setFrequency(e.target.value)}
+            className="w-full px-3 py-2 border border-secondary/20 rounded-lg bg-canvas text-primary"
+          >
+            {FREQUENCIES.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
               </option>
             ))}
           </select>

@@ -14,10 +14,10 @@ export function ForecastScreen() {
   const { timeSeriesData, displayMode, setStep } = useAppStore()
   const { data: backtestData } = useBacktest(timeSeriesData)
 
-  const winner = backtestData?.winner || 'Chronos-Bolt'
+  const winner = backtestData?.winner || 'Chronos-2'
   const modelNames = backtestData
     ? Object.keys(backtestData.aggregate_metrics)
-    : ['Chronos-Bolt', 'AutoETS', 'AutoTheta', 'SeasonalNaive']
+    : ['Chronos-2', 'TimesFM', 'AutoETS', 'AutoTheta', 'SeasonalNaive']
 
   const freq = timeSeriesData?.frequency || 'M'
   const freqInfo = FREQUENCY_LABELS[freq]

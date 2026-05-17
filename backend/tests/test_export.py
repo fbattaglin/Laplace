@@ -47,12 +47,12 @@ class TestXlsxReport:
     def test_backtest_sheet_with_data(self):
         data = {"name": "test", "dates": [], "values": [], "frequency": "M"}
         backtest = {
-            "winner": "Chronos-Bolt",
+            "winner": "Chronos-2",
             "selection_metric": "smape",
             "n_splits": 3,
             "horizon": 12,
             "aggregate_metrics": {
-                "Chronos-Bolt": {"smape": 5.0, "mae": 10.0, "rmse": 12.0, "mape": 4.5, "mase": 0.5},
+                "Chronos-2": {"smape": 5.0, "mae": 10.0, "rmse": 12.0, "mape": 4.5, "mase": 0.5},
                 "AutoETS": {"smape": 8.0, "mae": 15.0, "rmse": 18.0, "mape": 7.0, "mase": 0.8},
             },
         }
@@ -60,13 +60,13 @@ class TestXlsxReport:
 
         wb = load_workbook(io.BytesIO(generate_xlsx_report(data, None, backtest, None)))
         ws = wb["Backtest Metrics"]
-        assert ws.cell(row=2, column=1).value == "Chronos-Bolt"
+        assert ws.cell(row=2, column=1).value == "Chronos-2"
         assert ws.cell(row=2, column=2).value == 5.0
 
     def test_forecast_sheet_with_data(self):
         data = {"name": "test", "dates": [], "values": [], "frequency": "M"}
         forecast = {
-            "model_name": "Chronos-Bolt",
+            "model_name": "Chronos-2",
             "horizon": 3,
             "point_forecast": [100.0, 110.0, 120.0],
             "lo_80": [90.0, 100.0, 110.0],
@@ -90,7 +90,7 @@ class TestResultsLog:
 
         entry = {
             "dataset": "airline",
-            "model": "Chronos-Bolt",
+            "model": "Chronos-2",
             "smape": 5.0,
             "mae": 10.0,
             "rmse": 12.0,
@@ -106,7 +106,7 @@ class TestResultsLog:
             rows = list(reader)
         assert len(rows) == 1
         assert rows[0]["dataset"] == "airline"
-        assert rows[0]["model"] == "Chronos-Bolt"
+        assert rows[0]["model"] == "Chronos-2"
 
     def test_appends_multiple(self, tmp_path, monkeypatch):
         log_path = tmp_path / "results_log.csv"
@@ -148,7 +148,7 @@ async def test_export_log_endpoint(client, tmp_path, monkeypatch):
         "/api/export/log",
         json={
             "dataset": "airline",
-            "model": "Chronos-Bolt",
+            "model": "Chronos-2",
             "smape": 5.0,
             "mae": 10.0,
             "rmse": 12.0,

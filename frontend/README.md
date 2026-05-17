@@ -53,7 +53,7 @@ ExportScreen
 
 Every piece of visible text is keyed through `src/lib/copy.ts`. The toggle in the header switches between two modes:
 
-- **Boardroom** (default): plain language, decision-focused. "How predictable is your data?" / "Best model: Chronos-Bolt"
+- **Boardroom** (default): plain language, decision-focused. "How predictable is your data?" / "Best model: Chronos-2"
 - **Lab**: full statistical nomenclature. "Forecastability Index" / "sMAPE 5.00%, MASE 0.685, Rolling-origin CV (5 folds)"
 
 Switching mode is instant — no refetch, no reload.
@@ -78,7 +78,7 @@ The store is persisted to **sessionStorage** — navigate away, refresh, come ba
 All charts use **Recharts** `ComposedChart`:
 
 - **Confidence bands** — `Area` components with `dataKey` pointing to `[lo, hi]` arrays. Recharts renders these as range fills (band between two values), not fills from zero.
-- **Model colors** are fixed across all screens: Chronos-Bolt `#0066FF`, AutoETS `#FF6B00`, AutoTheta `#FFC700`, SeasonalNaive `#FF2A3A`.
+- **Model colors** are fixed across all screens: Chronos-2 `#0066FF`, AutoETS `#FF6B00`, AutoTheta `#FFC700`, SeasonalNaive `#FF2A3A`.
 - **BacktestChart** overlays actual holdout data (dashed black line) against each model's fold forecasts. Fold selector narrows to a single fold.
 
 ---

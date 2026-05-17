@@ -54,12 +54,12 @@ Interactive API docs: **http://localhost:8000/docs**
 **Response:**
 ```json
 {
-  "winner": "Chronos-Bolt",
+  "winner": "Chronos-2",
   "selection_metric": "smape",
   "horizon": 12,
   "n_splits": 5,
   "aggregate_metrics": {
-    "Chronos-Bolt": { "smape": 5.0, "mae": 20.02, "rmse": 24.83, "mape": 4.5, "mase": 0.685 },
+    "Chronos-2": { "smape": 5.0, "mae": 20.02, "rmse": 24.83, "mape": 4.5, "mase": 0.685 },
     "AutoETS":      { "smape": 7.1, "mae": 28.4,  "rmse": 35.2,  "mape": 6.8, "mase": 0.961 }
   },
   "folds": ["..."]
@@ -74,7 +74,7 @@ Interactive API docs: **http://localhost:8000/docs**
   "values": [112, 118, 132, "..."],
   "frequency": "M",
   "horizon": 12,
-  "model_name": "Chronos-Bolt"
+  "model_name": "Chronos-2"
 }
 ```
 
@@ -84,7 +84,7 @@ Interactive API docs: **http://localhost:8000/docs**
   "horizon": 12,
   "frequency": "M",
   "forecasts": [{
-    "model_name": "Chronos-Bolt",
+    "model_name": "Chronos-2",
     "point_forecast": [450.1, 470.3, "..."],
     "lo_80": [420.0, 438.0, "..."],
     "hi_80": [480.0, 502.0, "..."],
@@ -152,7 +152,7 @@ backend/
     ├── services/
     │   ├── parser.py         # CSV/XLSX parsing, gap interpolation, column detection
     │   ├── diagnostics.py    # STL (statsmodels), ACF/PACF, forecastability composite score
-    │   ├── forecasting.py    # Chronos-Bolt singleton, AutoETS/AutoTheta/SeasonalNaive
+    │   ├── forecasting.py    # Chronos-2 singleton, AutoETS/AutoTheta/SeasonalNaive
     │   ├── backtest.py       # Expanding-window CV, 5 metrics, winner selection
     │   └── export.py         # openpyxl 5-sheet workbook, results_log.csv append
     └── data/preloaded/

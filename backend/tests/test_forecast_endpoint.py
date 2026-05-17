@@ -15,7 +15,7 @@ async def test_forecast_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert data["horizon"] == 12
-    assert len(data["forecasts"]) == 4
+    assert len(data["forecasts"]) == 5
     for f in data["forecasts"]:
         assert len(f["point_forecast"]) == 12
 
@@ -26,12 +26,12 @@ async def test_forecast_single_model(client):
 
     response = await client.post(
         "/api/forecast",
-        json={"values": values, "frequency": "M", "model_name": "Chronos-Bolt"},
+        json={"values": values, "frequency": "M", "model_name": "Chronos-2"},
     )
     assert response.status_code == 200
     data = response.json()
     assert len(data["forecasts"]) == 1
-    assert data["forecasts"][0]["model_name"] == "Chronos-Bolt"
+    assert data["forecasts"][0]["model_name"] == "Chronos-2"
 
 
 @pytest.mark.asyncio
@@ -72,7 +72,7 @@ async def test_backtest_endpoint(client):
 
     for fold in data["folds"]:
         assert len(fold["actual"]) == 12
-        assert len(fold["forecasts"]) == 4
+        assert len(fold["forecasts"]) == 5
 
 
 @pytest.mark.asyncio

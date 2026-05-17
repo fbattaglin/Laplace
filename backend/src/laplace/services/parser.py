@@ -18,16 +18,61 @@ PRELOADED_DATASETS: dict[str, dict] = {
         "file": "airline_passengers.csv",
         "description": "Monthly totals of international airline passengers (1949-1960)",
         "frequency": "M",
+        "domain": "transport",
     },
     "sunspots": {
         "file": "sunspots.csv",
         "description": "Monthly mean sunspot numbers (1749-1983)",
         "frequency": "M",
+        "domain": "science",
     },
     "energy_demand": {
         "file": "energy_demand.csv",
         "description": "Hourly energy demand sample (synthetic, 1000 points)",
         "frequency": "H",
+        "domain": "energy",
+    },
+    "us_retail_sales": {
+        "file": "us_retail_sales.csv",
+        "description": "Monthly US retail sales in billions USD (2000-2024)",
+        "frequency": "M",
+        "domain": "retail",
+    },
+    "electricity_price_de": {
+        "file": "electricity_price_de.csv",
+        "description": "Daily German electricity spot price EUR/MWh (2021-2023)",
+        "frequency": "D",
+        "domain": "energy",
+    },
+    "us_unemployment": {
+        "file": "us_unemployment.csv",
+        "description": "Monthly US unemployment rate (2005-2024)",
+        "frequency": "M",
+        "domain": "economics",
+    },
+    "aus_beer_production": {
+        "file": "aus_beer_production.csv",
+        "description": "Quarterly Australian beer production in megalitres (1992-2024)",
+        "frequency": "Q",
+        "domain": "manufacturing",
+    },
+    "daily_temp_melbourne": {
+        "file": "daily_temp_melbourne.csv",
+        "description": "Daily minimum temperature in Melbourne, °C (2014-2023)",
+        "frequency": "D",
+        "domain": "climate",
+    },
+    "hospital_admissions": {
+        "file": "hospital_admissions.csv",
+        "description": "Weekly hospital emergency admissions (2019-2024)",
+        "frequency": "W",
+        "domain": "healthcare",
+    },
+    "web_traffic": {
+        "file": "web_traffic.csv",
+        "description": "Daily Wikipedia article pageviews (2022-2024)",
+        "frequency": "D",
+        "domain": "digital",
     },
 }
 
@@ -45,6 +90,7 @@ def list_preloaded() -> list[DatasetMeta]:
                     frequency=meta["frequency"],
                     n_rows=len(df),
                     columns=list(df.columns),
+                    domain=meta.get("domain"),
                 )
             )
     return results

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDiagnostics } from '../../hooks/useApi'
 import { useAppStore } from '../../stores/useAppStore'
@@ -5,11 +6,26 @@ import { t } from '../../lib/copy'
 import { STLChart } from './STLChart'
 import { ACFChart } from './ACFChart'
 import { ForecastabilityGauge } from './ForecastabilityGauge'
+import { DescriptiveStatsPanel } from './DescriptiveStatsPanel'
+import { DistributionChart } from './DistributionChart'
+import { RollingStatsChart } from './RollingStatsChart'
+import { OutlierHighlight } from './OutlierHighlight'
+import { StationarityPanel } from './StationarityPanel'
+
+type Tab = 'overview' | 'decomposition' | 'distribution' | 'stability'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'decomposition', label: 'Decomposition' },
+  { id: 'distribution', label: 'Distribution & Outliers' },
+  { id: 'stability', label: 'Stability' },
+]
 
 export function DiagnosticsScreen() {
   const { timeSeriesData, displayMode } = useAppStore()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useDiagnostics(timeSeriesData)
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   if (!timeSeriesData) {
     return (
@@ -60,11 +76,59 @@ export function DiagnosticsScreen() {
         </p>
       </div>
 
-      <ForecastabilityGauge result={data.forecastability} />
+      {/* Tab navigation */}
+      <div className="flex gap-1 bg-canvas rounded-xl p-1">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex-1 text-sm font-medium px-3 py-2 rounded-lg transition-all ${
+              activeTab === tab.id
+                ? 'bg-surface text-primary shadow-sm'
+                : 'text-secondary hover:text-primary'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      <STLChart stl={data.stl} dates={timeSeriesData.dates} />
+      {/* Tab content */}
+      {activeTab === 'overview' && (
+        <div className="space-y-5">
+          <ForecastabilityGauge result={data.forecastability} />
+          {data.descriptive_stats && <DescriptiveStatsPanel stats={data.descriptive_stats} />}
+        </div>
+      )}
 
-      <ACFChart acfData={data.acf_pacf} />
+      {activeTab === 'decomposition' && (
+        <div className="space-y-5">
+          <STLChart stl={data.stl} dates={timeSeriesData.dates} />
+          <ACFChart acfData={data.acf_pacf} />
+        </div>
+      )}
+
+      {activeTab === 'distribution' && (
+        <div className="space-y-5">
+          {data.distribution && <DistributionChart distribution={data.distribution} />}
+          {data.outliers && (
+            <OutlierHighlight
+              outliers={data.outliers}
+              values={data.stl.observed}
+              dates={timeSeriesData.dates}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'stability' && (
+        <div className="space-y-5">
+          {data.rolling_stats && (
+            <RollingStatsChart data={data.rolling_stats} dates={timeSeriesData.dates} />
+          )}
+          {data.stationarity && <StationarityPanel stationarity={data.stationarity} />}
+        </div>
+      )}
 
       <div className="flex justify-end pt-4">
         <button

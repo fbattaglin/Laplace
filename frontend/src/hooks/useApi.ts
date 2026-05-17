@@ -2,7 +2,9 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 
 import {
   confirmDataset,
+  confirmUpload,
   fetchDatasets,
+  fetchRunHistory,
   loadDataset,
   runBacktest,
   runDiagnostics,
@@ -50,6 +52,19 @@ export function useConfirmDataset() {
   })
 }
 
+export function useConfirmUpload() {
+  const setTimeSeriesData = useAppStore((s) => s.setTimeSeriesData)
+  const setStep = useAppStore((s) => s.setStep)
+
+  return useMutation({
+    mutationFn: confirmUpload,
+    onSuccess: (data) => {
+      setTimeSeriesData(data)
+      setStep('diagnostics')
+    },
+  })
+}
+
 export function useDiagnostics(data: TimeSeriesData | null) {
   return useQuery({
     queryKey: ['diagnostics', data?.name, data?.n_points],
@@ -68,5 +83,13 @@ export function useBacktest(data: TimeSeriesData | null) {
       }),
     enabled: !!data,
     staleTime: Infinity,
+  })
+}
+
+export function useRunHistory() {
+  return useQuery({
+    queryKey: ['run-history'],
+    queryFn: fetchRunHistory,
+    staleTime: 0,
   })
 }

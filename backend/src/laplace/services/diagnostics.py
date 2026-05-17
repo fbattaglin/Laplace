@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy import stats as scipy_stats
 from scipy.signal import periodogram
 from statsmodels.tsa.seasonal import STL
 from statsmodels.tsa.stattools import acf, adfuller, kpss, pacf
@@ -166,6 +167,128 @@ def _noise_level(arr: np.ndarray, frequency: Frequency) -> float:
     noise_ratio = var_resid / var_total
 
     return float(max(0.0, (1.0 - noise_ratio) * 100))
+
+
+def compute_descriptive_stats(values: list[float]) -> dict:
+    arr = np.array(values, dtype=np.float64)
+    q1, median, q3 = np.percentile(arr, [25, 50, 75])
+    mean = float(np.mean(arr))
+    std = float(np.std(arr, ddof=1))
+    return {
+        "count": len(arr),
+        "mean": round(mean, 4),
+        "std": round(std, 4),
+        "min": round(float(np.min(arr)), 4),
+        "q1": round(float(q1), 4),
+        "median": round(float(median), 4),
+        "q3": round(float(q3), 4),
+        "max": round(float(np.max(arr)), 4),
+        "skewness": round(float(scipy_stats.skew(arr)), 4),
+        "kurtosis": round(float(scipy_stats.kurtosis(arr)), 4),
+        "cv": round(std / mean if abs(mean) > 1e-10 else 0.0, 4),
+    }
+
+
+def compute_distribution(values: list[float]) -> dict:
+    arr = np.array(values, dtype=np.float64)
+    n_bins = min(30, max(10, int(np.sqrt(len(arr)))))
+    counts, bin_edges = np.histogram(arr, bins=n_bins)
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+    mean = float(np.mean(arr))
+    std = float(np.std(arr, ddof=1))
+
+    normal_x = np.linspace(arr.min(), arr.max(), 100).tolist()
+    if std > 1e-10:
+        normal_y = scipy_stats.norm.pdf(normal_x, mean, std)
+        bin_width = bin_edges[1] - bin_edges[0]
+        normal_y = (normal_y * len(arr) * bin_width).tolist()
+    else:
+        normal_y = [0.0] * 100
+
+    return {
+        "histogram": [{"x": round(float(x), 4), "count": int(c)} for x, c in zip(bin_centers, counts)],
+        "normal_x": [round(float(x), 4) for x in normal_x],
+        "normal_y": [round(float(y), 4) for y in normal_y],
+        "mean": round(mean, 4),
+        "std": round(std, 4),
+    }
+
+
+def compute_rolling_stats(values: list[float], frequency: Frequency) -> dict:
+    arr = np.array(values, dtype=np.float64)
+    period = FREQUENCY_MAP[frequency].period
+    window = max(period, min(len(arr) // 4, 30))
+
+    s = pd.Series(arr)
+    rolling_mean = s.rolling(window=window, center=True).mean().ffill().bfill()
+    rolling_std = s.rolling(window=window, center=True).std().ffill().bfill()
+
+    return {
+        "rolling_mean": [round(float(x), 4) for x in rolling_mean],
+        "rolling_std": [round(float(x), 4) for x in rolling_std],
+        "window": window,
+    }
+
+
+def compute_outliers(values: list[float]) -> dict:
+    arr = np.array(values, dtype=np.float64)
+    q1, q3 = np.percentile(arr, [25, 75])
+    iqr = q3 - q1
+    lower = float(q1 - 1.5 * iqr)
+    upper = float(q3 + 1.5 * iqr)
+
+    outlier_mask = (arr < lower) | (arr > upper)
+    indices = np.where(outlier_mask)[0].tolist()
+
+    return {
+        "lower_bound": round(lower, 4),
+        "upper_bound": round(upper, 4),
+        "outlier_indices": indices,
+        "outlier_values": [round(float(arr[i]), 4) for i in indices],
+        "n_outliers": len(indices),
+    }
+
+
+def compute_stationarity(values: list[float]) -> dict:
+    arr = np.array(values, dtype=np.float64)
+
+    try:
+        adf_stat, adf_pvalue = adfuller(arr, autolag="AIC")[:2]
+        adf_stat, adf_pvalue = float(adf_stat), float(adf_pvalue)
+    except Exception:
+        adf_stat, adf_pvalue = 0.0, 1.0
+
+    try:
+        kpss_stat, kpss_pvalue = kpss(arr, regression="c", nlags="auto")[:2]
+        kpss_stat, kpss_pvalue = float(kpss_stat), float(kpss_pvalue)
+    except Exception:
+        kpss_stat, kpss_pvalue = 0.0, 0.0
+
+    adf_stationary = adf_pvalue < 0.05
+    kpss_stationary = kpss_pvalue > 0.05
+    is_stationary = adf_stationary and kpss_stationary
+
+    if adf_stationary and kpss_stationary:
+        verdict = "Stationary — both ADF and KPSS agree."
+    elif adf_stationary and not kpss_stationary:
+        verdict = "Trend-stationary — ADF rejects unit root, KPSS detects trend."
+    elif not adf_stationary and kpss_stationary:
+        verdict = "Difference-stationary — unit root present, differencing recommended."
+    else:
+        verdict = "Non-stationary — both tests agree series has a unit root."
+
+    differenced = np.diff(arr).tolist()
+
+    return {
+        "adf_statistic": round(adf_stat, 4),
+        "adf_pvalue": round(adf_pvalue, 4),
+        "kpss_statistic": round(kpss_stat, 4),
+        "kpss_pvalue": round(kpss_pvalue, 4),
+        "is_stationary": is_stationary,
+        "verdict": verdict,
+        "differenced": [round(float(x), 4) for x in differenced],
+    }
 
 
 def compute_forecastability(values: list[float], frequency: Frequency) -> dict:

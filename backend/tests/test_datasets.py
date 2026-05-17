@@ -9,9 +9,14 @@ async def test_list_datasets(client):
     response = await client.get("/api/datasets")
     assert response.status_code == 200
     datasets = response.json()
-    assert len(datasets) == 3
+    assert len(datasets) == 10
     names = {d["name"] for d in datasets}
-    assert names == {"airline_passengers", "sunspots", "energy_demand"}
+    assert names == {
+        "airline_passengers", "sunspots", "energy_demand",
+        "us_retail_sales", "electricity_price_de", "us_unemployment",
+        "aus_beer_production", "daily_temp_melbourne", "hospital_admissions",
+        "web_traffic",
+    }
     for d in datasets:
         assert "frequency" in d
         assert "n_rows" in d

@@ -2,7 +2,7 @@
 
 **Can you predict it? And which model does it best?**
 
-Laplace is a desktop-first time series forecasting app that benchmarks Amazon's Chronos-Bolt-Small foundation model against three classical baselines — AutoETS, AutoTheta, and Seasonal Naïve — on any time series you bring. It gives you a rigorous, reproducible answer to the question every forecast analyst eventually asks: *is a zero-shot deep learning model actually better than a well-tuned classical one?*
+Laplace is a desktop-first time series forecasting app that benchmarks Amazon's Chronos-2-Small foundation model against three classical baselines — AutoETS, AutoTheta, and Seasonal Naïve — on any time series you bring. It gives you a rigorous, reproducible answer to the question every forecast analyst eventually asks: *is a zero-shot deep learning model actually better than a well-tuned classical one?*
 
 Named after [Laplace's Demon](https://en.wikipedia.org/wiki/Laplace%27s_demon): given a complete history, how well can we predict the future?
 
@@ -20,7 +20,7 @@ The model comparison uses **rolling-origin cross-validation**: the dataset is sp
 
 | Model | Type | Description |
 |---|---|---|
-| **Chronos-Bolt-Small** | Foundation model (48M params) | A language model for numbers, pretrained on millions of real-world time series. Zero-shot — no fine-tuning required. Uses Apple MPS on M-series chips. |
+| **Chronos-2-Small** | Foundation model (48M params) | A language model for numbers, pretrained on millions of real-world time series. Zero-shot — no fine-tuning required. Uses Apple MPS on M-series chips. |
 | **AutoETS** | Classical (exponential smoothing) | Automatically selects error/trend/seasonal structure (ETS) via AIC. Handles additive and multiplicative seasonality. |
 | **AutoTheta** | Classical (Theta decomposition) | Decomposes the series into two θ-lines. Strong on trended data with moderate seasonality. |
 | **Seasonal Naïve** | Baseline | Repeats the last observed seasonal cycle. The floor: any serious model should beat this. |
@@ -95,7 +95,7 @@ The season length drives STL decomposition, MASE baseline, and cross-validation 
 **Prerequisites:** Python 3.12+, Node.js 20+, [uv](https://docs.astral.sh/uv/)
 
 ```bash
-# Clone and run first-time setup (installs deps + downloads Chronos-Bolt ~500MB)
+# Clone and run first-time setup (installs deps + downloads Chronos-2 ~500MB)
 git clone https://github.com/fbattaglin/Laplace.git
 cd Laplace
 ./scripts/setup.sh
@@ -106,7 +106,7 @@ cd Laplace
 
 Open **http://localhost:5173** in your browser.
 
-> **Apple Silicon:** Chronos-Bolt uses MPS acceleration automatically on M-series chips. First run downloads the model weights (~500MB, cached locally after that).
+> **Apple Silicon:** Chronos-2 uses MPS acceleration automatically on M-series chips. First run downloads the model weights (~500MB, cached locally after that).
 
 ---
 
@@ -148,7 +148,7 @@ Returns aggregate metrics per model, fold-level results, and the winner.
 
 ### `POST /api/forecast`
 ```json
-{ "values": [...], "frequency": "M", "horizon": 12, "model_name": "Chronos-Bolt" }
+{ "values": [...], "frequency": "M", "horizon": 12, "model_name": "Chronos-2" }
 ```
 Returns point forecast + `lo_80`, `hi_80`, `lo_90`, `hi_90` arrays.
 

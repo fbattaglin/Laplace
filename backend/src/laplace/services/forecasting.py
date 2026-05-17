@@ -33,32 +33,83 @@ class ChronosSingleton:
     @classmethod
     def _load(cls):
         from chronos import BaseChronosPipeline
-        from chronos.chronos_bolt import ChronosBoltConfig
 
-        original_init = ChronosBoltConfig.__init__
-        original_fields = {f.name for f in ChronosBoltConfig.__dataclass_fields__.values()}
-
-        def _patched_init(self, **kwargs):
-            filtered = {k: v for k, v in kwargs.items() if k in original_fields}
-            original_init(self, **filtered)
-
-        ChronosBoltConfig.__init__ = _patched_init
-        try:
-            device = "mps" if torch.backends.mps.is_available() else "cpu"
-            logger.info(f"Loading Chronos-Bolt-Small on device: {device}")
-            pipeline = BaseChronosPipeline.from_pretrained(
-                "amazon/chronos-bolt-small",
-                device_map=device,
-                dtype=torch.float32,
-            )
-        finally:
-            ChronosBoltConfig.__init__ = original_init
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
+        logger.info(f"Loading Chronos-2-Small on device: {device}")
+        pipeline = BaseChronosPipeline.from_pretrained(
+            "autogluon/chronos-2-small",
+            device_map=device,
+            dtype=torch.float32,
+        )
         return pipeline
+
+
+TIMESFM_FREQ_MAP = {"H": 0, "D": 0, "W": 1, "M": 1, "Q": 2, "Y": 2}
+
+
+class TimesFMSingleton:
+    _instance = None
+    _lock = threading.Lock()
+    _model = None
+
+    @classmethod
+    def get_model(cls):
+        if cls._model is None:
+            with cls._lock:
+                if cls._model is None:
+                    cls._model = cls._load()
+        return cls._model
+
+    @classmethod
+    def _load(cls):
+        import timesfm
+
+        logger.info("Loading TimesFM 2.0 (500M)")
+        model = timesfm.TimesFm(
+            hparams=timesfm.TimesFmHparams(
+                context_len=512,
+                horizon_len=128,
+                input_patch_len=32,
+                output_patch_len=128,
+                num_layers=50,
+                num_heads=16,
+                model_dims=1280,
+                per_core_batch_size=32,
+                backend="cpu",
+                quantiles=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            ),
+            checkpoint=timesfm.TimesFmCheckpoint(
+                huggingface_repo_id="google/timesfm-2.0-500m-pytorch",
+            ),
+        )
+        return model
+
+
+def run_timesfm(
+    values: list[float], horizon: int, frequency: Frequency = "M"
+) -> ModelForecast:
+    model = TimesFMSingleton.get_model()
+    freq_int = TIMESFM_FREQ_MAP.get(frequency, 1)
+    point_forecast, quantile_forecast = model.forecast(
+        [values], freq=[freq_int]
+    )
+    # quantile_forecast shape: (1, horizon_len, 10)
+    # columns: [mean, q10, q20, q30, q40, q50, q60, q70, q80, q90]
+    q = quantile_forecast[0, :horizon, :]
+
+    return ModelForecast(
+        model_name="TimesFM",
+        point_forecast=_clean(q[:, 5]),
+        lo_90=_clean(q[:, 1]),
+        lo_80=_clean(q[:, 2]),
+        hi_80=_clean(q[:, 8]),
+        hi_90=_clean(q[:, 9]),
+    )
 
 
 def run_chronos(values: list[float], horizon: int) -> ModelForecast:
     pipeline = ChronosSingleton.get_pipeline()
-    context = torch.tensor([values], dtype=torch.float32)
+    context = torch.tensor([[values]], dtype=torch.float32)
 
     quantile_levels = [0.1, 0.2, 0.5, 0.8, 0.9]
     quantiles, _ = pipeline.predict_quantiles(
@@ -67,10 +118,10 @@ def run_chronos(values: list[float], horizon: int) -> ModelForecast:
         quantile_levels=quantile_levels,
     )
 
-    q = quantiles[0].numpy()
+    q = quantiles[0][0].numpy()
 
     return ModelForecast(
-        model_name="Chronos-Bolt",
+        model_name="Chronos-2",
         point_forecast=q[:, 2].tolist(),
         lo_90=q[:, 0].tolist(),
         lo_80=q[:, 1].tolist(),
@@ -144,7 +195,13 @@ def run_all_models(
         chronos_result = run_chronos(values, horizon)
         results.append(chronos_result)
     except Exception as e:
-        logger.warning(f"Chronos failed: {e}")
+        logger.warning(f"Chronos-2 failed: {e}")
+
+    try:
+        timesfm_result = run_timesfm(values, horizon, frequency)
+        results.append(timesfm_result)
+    except Exception as e:
+        logger.warning(f"TimesFM failed: {e}")
 
     try:
         sf_results = run_statsforecast(values, horizon, frequency)

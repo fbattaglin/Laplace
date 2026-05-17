@@ -2,13 +2,28 @@ from fastapi import APIRouter, HTTPException
 
 from laplace.models.schemas import (
     ACFResult,
+    DescriptiveStats,
     DiagnosticsRequest,
     DiagnosticsResponse,
+    DistributionResult,
     ForecastabilityDimension,
     ForecastabilityResult,
+    HistogramBin,
+    OutlierResult,
+    RollingStatsResult,
     STLResult,
+    StationarityResult,
 )
-from laplace.services.diagnostics import compute_acf_pacf, compute_forecastability, compute_stl
+from laplace.services.diagnostics import (
+    compute_acf_pacf,
+    compute_descriptive_stats,
+    compute_distribution,
+    compute_forecastability,
+    compute_outliers,
+    compute_rolling_stats,
+    compute_stationarity,
+    compute_stl,
+)
 
 router = APIRouter(prefix="/api/diagnostics", tags=["diagnostics"])
 
@@ -21,6 +36,11 @@ async def run_diagnostics(request: DiagnosticsRequest):
     stl_raw = compute_stl(request.values, request.frequency)
     acf_raw = compute_acf_pacf(request.values)
     forecast_raw = compute_forecastability(request.values, request.frequency)
+    desc_raw = compute_descriptive_stats(request.values)
+    dist_raw = compute_distribution(request.values)
+    rolling_raw = compute_rolling_stats(request.values, request.frequency)
+    outlier_raw = compute_outliers(request.values)
+    stat_raw = compute_stationarity(request.values)
 
     stl = STLResult(
         observed=stl_raw["observed"],
@@ -44,4 +64,47 @@ async def run_diagnostics(request: DiagnosticsRequest):
         details=forecast_raw["details"],
     )
 
-    return DiagnosticsResponse(stl=stl, acf_pacf=acf_pacf, forecastability=forecastability)
+    descriptive_stats = DescriptiveStats(**desc_raw)
+
+    distribution = DistributionResult(
+        histogram=[HistogramBin(**b) for b in dist_raw["histogram"]],
+        normal_x=dist_raw["normal_x"],
+        normal_y=dist_raw["normal_y"],
+        mean=dist_raw["mean"],
+        std=dist_raw["std"],
+    )
+
+    rolling_stats = RollingStatsResult(
+        rolling_mean=rolling_raw["rolling_mean"],
+        rolling_std=rolling_raw["rolling_std"],
+        window=rolling_raw["window"],
+    )
+
+    outliers = OutlierResult(
+        lower_bound=outlier_raw["lower_bound"],
+        upper_bound=outlier_raw["upper_bound"],
+        outlier_indices=outlier_raw["outlier_indices"],
+        outlier_values=outlier_raw["outlier_values"],
+        n_outliers=outlier_raw["n_outliers"],
+    )
+
+    stationarity = StationarityResult(
+        adf_statistic=stat_raw["adf_statistic"],
+        adf_pvalue=stat_raw["adf_pvalue"],
+        kpss_statistic=stat_raw["kpss_statistic"],
+        kpss_pvalue=stat_raw["kpss_pvalue"],
+        is_stationary=stat_raw["is_stationary"],
+        verdict=stat_raw["verdict"],
+        differenced=stat_raw["differenced"],
+    )
+
+    return DiagnosticsResponse(
+        stl=stl,
+        acf_pacf=acf_pacf,
+        forecastability=forecastability,
+        descriptive_stats=descriptive_stats,
+        distribution=distribution,
+        rolling_stats=rolling_stats,
+        outliers=outliers,
+        stationarity=stationarity,
+    )

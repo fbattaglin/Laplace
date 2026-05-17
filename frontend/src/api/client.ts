@@ -67,6 +67,31 @@ export async function confirmDataset(params: {
   })
 }
 
+export async function confirmUpload(params: {
+  file: File
+  datetime_col: string
+  target_col: string
+  frequency?: string
+}): Promise<TimeSeriesData> {
+  const formData = new FormData()
+  formData.append('file', params.file)
+  formData.append('datetime_col', params.datetime_col)
+  formData.append('target_col', params.target_col)
+  if (params.frequency) formData.append('frequency', params.frequency)
+
+  const response = await fetch(`${BASE_URL}/datasets/upload/confirm`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Confirm failed' }))
+    throw new Error(error.detail || `Confirm failed: ${response.status}`)
+  }
+
+  return response.json()
+}
+
 export async function runDiagnostics(data: TimeSeriesData): Promise<DiagnosticsResponse> {
   return apiFetch('/diagnostics', {
     method: 'POST',
@@ -93,16 +118,34 @@ export async function exportXlsx(payload: {
   diagnostics?: Record<string, unknown> | null
   backtest?: Record<string, unknown> | null
   forecast?: Record<string, unknown> | null
+  sections?: string[]
+  notes?: string
 }): Promise<Blob> {
   const response = await fetch(`${BASE_URL}/export/xlsx`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!response.ok) {
-    throw new Error('Export failed')
-  }
+  if (!response.ok) throw new Error('Export failed')
   return response.blob()
+}
+
+export async function exportCsv(payload: {
+  data: Record<string, unknown>
+  backtest?: Record<string, unknown> | null
+  forecast?: Record<string, unknown> | null
+}): Promise<Blob> {
+  const response = await fetch(`${BASE_URL}/export/csv`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error('CSV export failed')
+  return response.blob()
+}
+
+export async function fetchRunHistory(): Promise<{ entries: Record<string, string>[] }> {
+  return apiFetch('/export/log')
 }
 
 export async function saveToLog(entry: Record<string, unknown>): Promise<{ status: string }> {

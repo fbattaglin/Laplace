@@ -15,7 +15,7 @@ echo "2/3  Installing Node dependencies..."
 cd "$ROOT/frontend" && npm install
 
 echo ""
-echo "3/3  Pre-loading Chronos-Bolt-Small model..."
+echo "3/3  Pre-loading Chronos-2-Small model..."
 cd "$ROOT/backend" && uv run python -c "
 from laplace.services.forecasting import ChronosSingleton
 print('Loading model...')

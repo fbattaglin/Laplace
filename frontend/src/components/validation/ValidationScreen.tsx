@@ -26,10 +26,10 @@ export function ValidationScreen() {
           <p className="text-secondary mt-4">
             {displayMode === 'boardroom'
               ? 'Testing all models on your data...'
-              : 'Running rolling-origin cross-validation (4 models × 5 folds)...'}
+              : 'Running rolling-origin cross-validation (5 models × 5 folds)...'}
           </p>
           <p className="text-xs text-secondary/60 mt-2">
-            This may take a few seconds on the first run while Chronos-Bolt loads.
+            This may take a moment on the first run while foundation models load.
           </p>
         </div>
       </div>

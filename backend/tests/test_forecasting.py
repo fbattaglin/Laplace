@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from laplace.services.forecasting import run_all_models, run_chronos, run_statsforecast
+from laplace.services.forecasting import run_all_models, run_chronos, run_statsforecast, run_timesfm
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def synthetic_monthly():
 class TestChronos:
     def test_produces_correct_horizon(self, synthetic_monthly):
         result = run_chronos(synthetic_monthly, horizon=12)
-        assert result.model_name == "Chronos-Bolt"
+        assert result.model_name == "Chronos-2"
         assert len(result.point_forecast) == 12
         assert len(result.lo_90) == 12
         assert len(result.hi_90) == 12
@@ -35,6 +35,34 @@ class TestChronos:
     def test_constant_series_no_crash(self):
         values = [50.0] * 30
         result = run_chronos(values, horizon=5)
+        assert len(result.point_forecast) == 5
+        assert all(np.isfinite(v) for v in result.point_forecast)
+
+
+class TestTimesFM:
+    def test_produces_correct_horizon(self, synthetic_monthly):
+        result = run_timesfm(synthetic_monthly, horizon=12)
+        assert result.model_name == "TimesFM"
+        assert len(result.point_forecast) == 12
+        assert len(result.lo_90) == 12
+        assert len(result.hi_90) == 12
+
+    def test_intervals_ordered(self, synthetic_monthly):
+        result = run_timesfm(synthetic_monthly, horizon=6)
+        for i in range(6):
+            assert result.lo_90[i] <= result.lo_80[i]
+            assert result.lo_80[i] <= result.point_forecast[i]
+            assert result.point_forecast[i] <= result.hi_80[i]
+            assert result.hi_80[i] <= result.hi_90[i]
+
+    def test_short_series(self):
+        values = list(range(20, 40))
+        result = run_timesfm(values, horizon=5)
+        assert len(result.point_forecast) == 5
+
+    def test_constant_series_no_crash(self):
+        values = [50.0] * 30
+        result = run_timesfm(values, horizon=5)
         assert len(result.point_forecast) == 5
         assert all(np.isfinite(v) for v in result.point_forecast)
 
@@ -76,9 +104,10 @@ class TestStatsForecast:
 
 
 class TestRunAllModels:
-    def test_returns_four_models(self, synthetic_monthly):
+    def test_returns_five_models(self, synthetic_monthly):
         results = run_all_models(synthetic_monthly, horizon=12, frequency="M")
-        assert len(results) == 4
+        assert len(results) == 5
         names = {r.model_name for r in results}
-        assert "Chronos-Bolt" in names
+        assert "Chronos-2" in names
+        assert "TimesFM" in names
         assert "AutoETS" in names

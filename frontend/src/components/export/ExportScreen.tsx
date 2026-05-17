@@ -1,47 +1,78 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { exportXlsx, saveToLog } from '../../api/client'
+import { exportCsv, exportXlsx, saveToLog } from '../../api/client'
 import { useAppStore } from '../../stores/useAppStore'
 import { useBacktest, useDiagnostics } from '../../hooks/useApi'
 import { t } from '../../lib/copy'
+import { ReportBuilder } from './ReportBuilder'
+import { RunHistory } from './RunHistory'
+
+const DEFAULT_SECTIONS = new Set(['summary', 'backtest', 'forecast', 'diagnostics', 'raw_data'])
 
 export function ExportScreen() {
   const { timeSeriesData, displayMode } = useAppStore()
   const { data: diagnosticsData } = useDiagnostics(timeSeriesData)
   const { data: backtestData } = useBacktest(timeSeriesData)
+  const queryClient = useQueryClient()
+
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(DEFAULT_SECTIONS)
+  const [notes, setNotes] = useState('')
   const [logSaved, setLogSaved] = useState(false)
 
-  const downloadMutation = useMutation({
+  const toggleSection = (id: string) => {
+    setSelectedSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const buildPayload = () => ({
+    data: {
+      name: timeSeriesData!.name,
+      dates: timeSeriesData!.dates,
+      values: timeSeriesData!.values,
+      frequency: timeSeriesData!.frequency,
+      n_points: timeSeriesData!.n_points,
+    },
+    diagnostics: diagnosticsData ? { forecastability: diagnosticsData.forecastability } : null,
+    backtest: backtestData
+      ? {
+          winner: backtestData.winner,
+          selection_metric: backtestData.selection_metric,
+          n_splits: backtestData.n_splits,
+          horizon: backtestData.horizon,
+          aggregate_metrics: backtestData.aggregate_metrics,
+        }
+      : null,
+  })
+
+  const xlsxMutation = useMutation({
     mutationFn: () =>
       exportXlsx({
-        data: {
-          name: timeSeriesData!.name,
-          dates: timeSeriesData!.dates,
-          values: timeSeriesData!.values,
-          frequency: timeSeriesData!.frequency,
-          n_points: timeSeriesData!.n_points,
-        },
-        diagnostics: diagnosticsData
-          ? {
-              forecastability: diagnosticsData.forecastability,
-            }
-          : null,
-        backtest: backtestData
-          ? {
-              winner: backtestData.winner,
-              selection_metric: backtestData.selection_metric,
-              n_splits: backtestData.n_splits,
-              horizon: backtestData.horizon,
-              aggregate_metrics: backtestData.aggregate_metrics,
-            }
-          : null,
+        ...buildPayload(),
+        sections: [...selectedSections],
+        notes: notes.trim() || undefined,
       }),
     onSuccess: (blob) => {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = `laplace_${timeSeriesData!.name}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+  })
+
+  const csvMutation = useMutation({
+    mutationFn: () => exportCsv(buildPayload()),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `laplace_${timeSeriesData!.name}.csv`
       a.click()
       URL.revokeObjectURL(url)
     },
@@ -63,7 +94,10 @@ export function ExportScreen() {
         frequency: timeSeriesData!.frequency,
       })
     },
-    onSuccess: () => setLogSaved(true),
+    onSuccess: () => {
+      setLogSaved(true)
+      queryClient.invalidateQueries({ queryKey: ['run-history'] })
+    },
   })
 
   if (!timeSeriesData) {
@@ -86,10 +120,11 @@ export function ExportScreen() {
         <p className="text-secondary">
           {displayMode === 'boardroom'
             ? 'Download your analysis as an Excel report or save results for comparison.'
-            : 'Export XLSX report (5 sheets) and/or append to results_log.csv.'}
+            : 'Export XLSX report with section control, or download a flat CSV.'}
         </p>
       </div>
 
+      {/* KPI summary cards */}
       <div className="bg-surface rounded-xl p-6">
         <h3 className="font-medium text-primary mb-4">Analysis Summary</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -98,83 +133,75 @@ export function ExportScreen() {
           <SummaryCard label="Frequency" value={timeSeriesData.frequency} />
           <SummaryCard
             label="Forecastability"
-            value={
-              diagnosticsData
-                ? `${diagnosticsData.forecastability.total_score.toFixed(0)} / 100`
-                : '—'
-            }
+            value={diagnosticsData ? `${diagnosticsData.forecastability.total_score.toFixed(0)} / 100` : '—'}
           />
           <SummaryCard label="Best Model" value={winner} />
-          <SummaryCard
-            label="sMAPE"
-            value={winnerMetrics ? `${winnerMetrics.smape.toFixed(2)}%` : '—'}
-          />
-          <SummaryCard
-            label="MAE"
-            value={winnerMetrics ? winnerMetrics.mae.toFixed(2) : '—'}
-          />
-          <SummaryCard
-            label="MASE"
-            value={winnerMetrics ? winnerMetrics.mase.toFixed(3) : '—'}
-          />
+          <SummaryCard label="sMAPE" value={winnerMetrics ? `${winnerMetrics.smape.toFixed(2)}%` : '—'} />
+          <SummaryCard label="MAE" value={winnerMetrics ? winnerMetrics.mae.toFixed(2) : '—'} />
+          <SummaryCard label="MASE" value={winnerMetrics ? winnerMetrics.mase.toFixed(3) : '—'} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-surface rounded-xl p-6">
-          <h3 className="font-medium text-primary mb-2">Download Report</h3>
+      {/* Report Builder */}
+      <ReportBuilder
+        selectedSections={selectedSections}
+        onToggleSection={toggleSection}
+        notes={notes}
+        onNotesChange={setNotes}
+      />
+
+      {/* Download buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-surface rounded-xl p-5">
+          <h3 className="font-medium text-primary mb-1">Download XLSX</h3>
           <p className="text-xs text-secondary mb-4">
-            {displayMode === 'boardroom'
-              ? 'Excel file with summary, forecasts, model comparison, diagnostics, and raw data.'
-              : '5-sheet XLSX: Summary, Forecast, Backtest Metrics, Diagnostics, Raw Data.'}
+            {[...selectedSections].length} sheet{[...selectedSections].length !== 1 ? 's' : ''} selected
           </p>
           <button
-            onClick={() => downloadMutation.mutate()}
-            disabled={downloadMutation.isPending}
-            className="w-full px-4 py-3 bg-accent-blue text-white rounded-lg font-medium hover:bg-accent-blue/90 transition-colors disabled:opacity-50"
+            onClick={() => xlsxMutation.mutate()}
+            disabled={xlsxMutation.isPending || selectedSections.size === 0}
+            className="w-full px-4 py-2.5 bg-accent-blue text-white rounded-lg text-sm font-medium hover:bg-accent-blue/90 transition-colors disabled:opacity-50"
           >
-            {downloadMutation.isPending
-              ? 'Generating...'
-              : downloadMutation.isSuccess
-                ? 'Downloaded! Click to download again'
-                : 'Download XLSX'}
+            {xlsxMutation.isPending ? 'Generating...' : xlsxMutation.isSuccess ? 'Downloaded!' : 'Download XLSX'}
           </button>
-          {downloadMutation.isError && (
-            <p className="text-xs text-accent-red mt-2">
-              Download failed. Please try again.
-            </p>
-          )}
+          {xlsxMutation.isError && <p className="text-xs text-accent-red mt-2">Download failed.</p>}
         </div>
 
-        <div className="bg-surface rounded-xl p-6">
-          <h3 className="font-medium text-primary mb-2">Save to Results Log</h3>
+        <div className="bg-surface rounded-xl p-5">
+          <h3 className="font-medium text-primary mb-1">Download CSV</h3>
+          <p className="text-xs text-secondary mb-4">Flat file with metrics and raw data</p>
+          <button
+            onClick={() => csvMutation.mutate()}
+            disabled={csvMutation.isPending}
+            className="w-full px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {csvMutation.isPending ? 'Generating...' : csvMutation.isSuccess ? 'Downloaded!' : 'Download CSV'}
+          </button>
+          {csvMutation.isError && <p className="text-xs text-accent-red mt-2">Download failed.</p>}
+        </div>
+
+        <div className="bg-surface rounded-xl p-5">
+          <h3 className="font-medium text-primary mb-1">Save to Log</h3>
           <p className="text-xs text-secondary mb-4">
-            {displayMode === 'boardroom'
-              ? 'Save this run for later comparison across different datasets or models.'
-              : 'Append one row to results_log.csv with key metrics and metadata.'}
+            {displayMode === 'boardroom' ? 'Track this run for later comparison.' : 'Append to results_log.csv.'}
           </p>
           <button
             onClick={() => logMutation.mutate()}
             disabled={logMutation.isPending || logSaved}
-            className={`w-full px-4 py-3 rounded-lg font-medium transition-colors ${
+            className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               logSaved
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-primary text-white hover:bg-primary/90 disabled:opacity-50'
+                ? 'bg-green-500/15 text-green-600 border border-green-500/20'
+                : 'bg-canvas text-primary border border-surface hover:bg-surface disabled:opacity-50'
             }`}
           >
-            {logMutation.isPending
-              ? 'Saving...'
-              : logSaved
-                ? 'Saved to results_log.csv'
-                : 'Save to Log'}
+            {logMutation.isPending ? 'Saving...' : logSaved ? 'Saved!' : 'Save to Log'}
           </button>
-          {logMutation.isError && (
-            <p className="text-xs text-accent-red mt-2">
-              Failed to save. Please try again.
-            </p>
-          )}
+          {logMutation.isError && <p className="text-xs text-accent-red mt-2">Failed to save.</p>}
         </div>
       </div>
+
+      {/* Run History */}
+      <RunHistory />
     </div>
   )
 }
@@ -183,7 +210,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs text-secondary">{label}</p>
-      <p className="text-sm font-medium text-primary mt-0.5">{value}</p>
+      <p className="text-sm font-medium text-primary mt-0.5 truncate">{value}</p>
     </div>
   )
 }

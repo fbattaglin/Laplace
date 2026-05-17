@@ -12,7 +12,7 @@ export function DataInputScreen() {
   const { displayMode } = useAppStore()
   const [uploadResult, setUploadResult] = useState<{
     response: UploadResponse
-    fileName: string
+    file: File
   } | null>(null)
 
   return (
@@ -41,7 +41,7 @@ export function DataInputScreen() {
 
       <FileUploader
         onUploadComplete={(response, file) =>
-          setUploadResult({ response, fileName: file.name })
+          setUploadResult({ response, file })
         }
       />
 
@@ -50,7 +50,7 @@ export function DataInputScreen() {
           <DataPreview data={uploadResult.response} />
           <ColumnMapper
             uploadResponse={uploadResult.response}
-            fileName={uploadResult.fileName}
+            file={uploadResult.file}
           />
         </>
       )}

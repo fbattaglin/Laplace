@@ -13,19 +13,109 @@ def generate_xlsx_report(
     diagnostics: dict | None,
     backtest: dict | None,
     forecast: dict | None,
+    sections: list[str] | None = None,
+    notes: str | None = None,
 ) -> bytes:
+    """Generate XLSX report. sections controls which sheets are included."""
+    all_sections = {"summary", "forecast", "backtest", "diagnostics", "raw_data", "notes"}
+    include = set(sections) if sections else all_sections
+
     wb = Workbook()
 
-    _write_summary_sheet(wb, data, diagnostics, backtest, forecast)
-    _write_forecast_sheet(wb, data, forecast)
-    _write_backtest_sheet(wb, backtest)
-    _write_diagnostics_sheet(wb, diagnostics)
-    _write_raw_data_sheet(wb, data)
+    if "summary" in include:
+        _write_summary_sheet(wb, data, diagnostics, backtest, forecast)
+    else:
+        # openpyxl always has a default sheet; rename it to a placeholder then remove after
+        ws = wb.active
+        ws.title = "_placeholder"
+
+    if "forecast" in include:
+        _write_forecast_sheet(wb, data, forecast)
+    if "backtest" in include:
+        _write_backtest_sheet(wb, backtest)
+    if "diagnostics" in include:
+        _write_diagnostics_sheet(wb, diagnostics)
+    if "raw_data" in include:
+        _write_raw_data_sheet(wb, data)
+    if "notes" in include and notes:
+        _write_notes_sheet(wb, notes)
+
+    # Remove placeholder sheet if summary was skipped
+    if "_placeholder" in wb.sheetnames and len(wb.sheetnames) > 1:
+        del wb["_placeholder"]
 
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
     return buf.getvalue()
+
+
+def generate_csv_report(
+    data: dict,
+    backtest: dict | None,
+    forecast: dict | None,
+) -> bytes:
+    """Generate a flat CSV with the most important data for quick use."""
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    # Header block
+    writer.writerow(["# Laplace Export", datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")])
+    writer.writerow(["# Dataset", data.get("name", ""), "Frequency", data.get("frequency", ""), "Points", data.get("n_points", "")])
+    writer.writerow([])
+
+    # Backtest metrics block
+    if backtest:
+        writer.writerow(["# Backtest Aggregate Metrics"])
+        writer.writerow(["Model", "sMAPE", "MAE", "RMSE", "MAPE", "MASE"])
+        winner = backtest.get("winner", "")
+        for name, m in backtest.get("aggregate_metrics", {}).items():
+            star = "*" if name == winner else ""
+            writer.writerow([
+                f"{name}{star}",
+                round(m.get("smape", 0), 4),
+                round(m.get("mae", 0), 4),
+                round(m.get("rmse", 0), 4),
+                round(m.get("mape") or 0, 4),
+                round(m.get("mase", 0), 4),
+            ])
+        writer.writerow([])
+
+    # Forecast block
+    if forecast and forecast.get("point_forecast"):
+        writer.writerow(["# Forecast"])
+        writer.writerow(["Step", "Point Forecast", "Lo 80%", "Hi 80%", "Lo 90%", "Hi 90%"])
+        pf = forecast["point_forecast"]
+        for i in range(len(pf)):
+            writer.writerow([
+                i + 1,
+                round(pf[i], 4),
+                round(forecast["lo_80"][i], 4),
+                round(forecast["hi_80"][i], 4),
+                round(forecast["lo_90"][i], 4),
+                round(forecast["hi_90"][i], 4),
+            ])
+        writer.writerow([])
+
+    # Raw data block
+    dates = data.get("dates", [])
+    values = data.get("values", [])
+    if values:
+        writer.writerow(["# Raw Data"])
+        writer.writerow(["Date", "Value"])
+        for i, v in enumerate(values):
+            writer.writerow([dates[i] if i < len(dates) else "", round(v, 6)])
+
+    return buf.getvalue().encode("utf-8")
+
+
+def read_results_log() -> list[dict]:
+    """Read all entries from the results log CSV."""
+    if not RESULTS_LOG_PATH.exists():
+        return []
+    with open(RESULTS_LOG_PATH, newline="") as f:
+        reader = csv.DictReader(f)
+        return list(reader)
 
 
 HEADER_FONT = Font(bold=True, size=11)
@@ -191,6 +281,14 @@ def _write_raw_data_sheet(wb, data):
         ws.cell(row=row, column=2, value=values[i]).number_format = NUM_FMT
 
     _auto_width(ws)
+
+
+def _write_notes_sheet(wb, notes: str):
+    ws = wb.create_sheet("Analyst Notes")
+    ws.cell(row=1, column=1, value="Analyst Notes").font = HEADER_FONT
+    for i, line in enumerate(notes.splitlines(), 2):
+        ws.cell(row=i, column=1, value=line)
+    ws.column_dimensions["A"].width = 80
 
 
 RESULTS_LOG_PATH = Path(__file__).resolve().parents[3] / "results_log.csv"

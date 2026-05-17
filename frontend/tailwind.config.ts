@@ -14,6 +14,7 @@ export default {
           orange: '#FF6B00',
           yellow: '#FFC700',
           red: '#FF2A3A',
+          teal: '#14B8A6',
         },
       },
       fontFamily: {
