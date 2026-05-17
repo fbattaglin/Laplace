@@ -252,8 +252,8 @@ export default function Validation() {
                   )}
                 >
                   {isWinner && (
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-accent-pulse/10 rounded-bl-full flex items-start justify-end p-2">
-                      <Trophy size={16} className="text-accent-pulse" />
+                    <div className="absolute top-2 right-10 pointer-events-none">
+                      <Trophy size={14} className="text-accent-pulse" />
                     </div>
                   )}
                   
@@ -262,18 +262,16 @@ export default function Validation() {
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                       <h3 className="font-bold text-base-primary">{m.model}</h3>
                     </div>
-                    <div className="flex items-center">
-                      <input 
-                        type="radio"
-                        name="winner-selection"
-                        className="accent-accent-pulse w-4 h-4 cursor-pointer"
-                        checked={selectedWinner === m.model}
-                        onChange={() => {
-                          setSelectedWinner(m.model);
-                          localStorage.setItem('laplace_winner', m.model);
-                        }}
-                      />
-                    </div>
+                    <input 
+                      type="radio"
+                      name="winner-selection"
+                      className="accent-accent-pulse w-4 h-4 cursor-pointer relative z-10"
+                      checked={selectedWinner === m.model}
+                      onChange={() => {
+                        setSelectedWinner(m.model);
+                        localStorage.setItem('laplace_winner', m.model);
+                      }}
+                    />
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2">

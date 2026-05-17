@@ -1,24 +1,5 @@
-INFO:     Started server process [9078]
+INFO:     Started server process [16308]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-`torch_dtype` is deprecated! Use `dtype` instead!
-Lazy loading Chronos-T5-Small into registry...
-Lazy loading TimesFM-200M into registry...
- See https://github.com/google-research/timesfm/blob/master/README.md for updated APIs.
-Loaded PyTorch TimesFM, likely because python version is 3.12.13 (main, Mar 10 2026, 18:18:07) [Clang 21.1.4 ].
-Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 79137.81it/s]
-INFO:     127.0.0.1:51114 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51138 - "GET /api/datasets/national_grid HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51138 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51153 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51153 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51138 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51160 - "OPTIONS /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51160 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51176 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51177 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51177 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51176 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51185 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51186 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55599 - "GET /api/health HTTP/1.1" 200 OK

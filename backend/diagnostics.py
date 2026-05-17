@@ -70,30 +70,76 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         
         trend_strength = max(0, 1 - var_resid / var_trend_resid) if var_trend_resid > 0 else 0
         seasonal_strength = max(0, 1 - var_resid / var_seas_resid) if var_seas_resid > 0 else 0
+        # Raw STL signal-to-noise (R²)
         signal_r2 = max(0, 1 - var_resid / var_orig) if var_orig > 0 else 0
         
-        score_val = float(signal_r2 * 100)
-        if n < period * 3:
-            score_val *= 0.8 
-            
-        score_val = min(100.0, max(0.0, score_val))
-        
-        if score_val >= 75:
-            score_label = "High — Strong signal with clear patterns."
-        elif score_val >= 40:
-            score_label = "Moderate — Detectable patterns but with noticeable noise."
-        else:
-            score_label = "Low — Highly noisy or irregular data."
-            
     except Exception as e:
         print(f"STL Error: {e}")
         trend = observed = y.tolist()
         seasonal = [0]*n
         resid = [0]*n
-        score_val = 50.0
-        score_label = "Unknown — Error computing decomposition."
+        signal_r2 = 0.5
         trend_strength = 0
         seasonal_strength = 0
+
+    # ── Rigorous Forecastability Score ─────────────────────────────────────
+    # The fundamental question is: "do past values help predict future values?"
+    # STL R² alone is misleading: a pure random walk has R²≈1 because STL
+    # always finds a trend. The correct approach tests the INNOVATIONS (differences).
+
+    # Factor 1: Persistence of structure in differenced series
+    #   A random walk after differencing → white noise (ACF ≈ 0)
+    #   A seasonal/trending series after differencing → retains autocorrelation
+    #   This is the PRIMARY discriminator between predictable and unpredictable series.
+    try:
+        y_diff = y.diff().dropna()
+        nlags_acf = min(max(period + 2, 8), len(y_diff) // 2 - 1)
+        acf_diff_vals = acf(y_diff, nlags=nlags_acf, fft=True)
+        # Mean |ACF| at lags 1 to min(period, 12): captures seasonal/AR memory
+        upper_lag = min(period, 12)
+        mean_acf_diff = float(np.mean(np.abs(acf_diff_vals[1:upper_lag + 1])))
+        # Scale: ≥0.4 ACF → strong memory (score 1.0); ≤0.02 → random walk (score 0)
+        f_persistence = min(1.0, max(0.0, (mean_acf_diff - 0.02) / 0.38))
+    except Exception:
+        f_persistence = 0.3
+
+    # Factor 2: Signal purity from STL (how much structure vs residual noise)
+    #   Weight reduced: it's informative but not sufficient alone.
+    f_signal = signal_r2  # already in [0,1]
+
+    # Factor 3: Coefficient of Variation (volatility relative to level)
+    #   Crypto / meme stocks: CV >> 1 → highly unstable magnitude → penalise
+    #   Stable demand series: CV < 0.3 → no penalty
+    mean_val = float(np.abs(y.mean()))
+    cv = float(y.std() / mean_val) if mean_val > 1e-8 else 2.0
+    f_stability = max(0.3, 1.0 - 0.7 * min((cv - 0.2) / 1.8, 1.0))
+
+    # Factor 4: Data length adequacy (more data = more reliable patterns)
+    #   < 2×period: very short, penalise heavily
+    #   ≥ 4×period: full credit
+    f_length = min(1.0, max(0.3, (n - period) / (3 * period)))
+
+    # ── Composite Score ──────────────────────────────────────────────────────
+    # Persistence of differenced ACF is the strongest signal (50% weight):
+    #   it correctly marks random walks as low-score regardless of trend strength.
+    raw_score = (
+        0.50 * f_persistence +   # ACF of differences: primary predictor
+        0.25 * f_signal +        # STL R²: structural content
+        0.15 * f_stability +     # Volatility: stability of level
+        0.10 * f_length          # Data adequacy
+    )
+    score_val = float(raw_score * 100)
+    score_val = min(100.0, max(0.0, score_val))
+
+    if score_val >= 72:
+        score_label = "High — Strong, repeatable structure. Good forecast conditions."
+    elif score_val >= 45:
+        score_label = "Moderate — Detectable patterns with meaningful uncertainty."
+    elif score_val >= 22:
+        score_label = "Low — Noisy or near-random. Forecasts carry high uncertainty."
+    else:
+        score_label = "Very Low — Near-random behavior. Use forecasts as wide scenarios only."
+
 
     # 2. ACF and PACF
     nlags = min(40, n // 2 - 1)
