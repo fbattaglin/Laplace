@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Upload, Database, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { fetchDatasets, loadDataset, uploadDataset, type DatasetResponse } from '../lib/api';
+import { fetchDatasets, loadDataset, uploadDataset, type DatasetResponse, type DatasetInfo } from '../lib/api';
 import clsx from 'clsx';
 
 export default function DataInput() {
-  const [datasets, setDatasets] = useState<{name: string, description: string}[]>([]);
+  const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DatasetResponse | null>(null);
@@ -93,8 +93,13 @@ export default function DataInput() {
                 )}
               >
                 <div>
-                  <div className="font-medium capitalize">{ds.name.replace('_', ' ')}</div>
+                  <div className="font-medium capitalize text-base-primary">{ds.name.replace('_', ' ')}</div>
                   <div className="text-xs text-base-secondary mt-1">{ds.description}</div>
+                  {ds.problem_statement && (
+                    <div className="text-[11px] text-accent-pulse mt-2 font-medium italic border-l-2 border-accent-pulse pl-2">
+                      {ds.problem_statement}
+                    </div>
+                  )}
                 </div>
                 <ChevronRight size={18} className="text-base-secondary group-hover:text-base-primary transition-colors" />
               </button>

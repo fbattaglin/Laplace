@@ -1,6 +1,6 @@
 <div align="center">
   <img src="frontend/public/logo-header.png" alt="Laplace Logo" width="120" />
-  <h1>Laplace</h1>
+  <h1>Laplace V2</h1>
   <p><b>Foundation Model Forecasting for the Boardroom</b></p>
 </div>
 
@@ -8,16 +8,16 @@
 
 **Laplace** is a desktop-first, full-stack application designed to answer a single question with absolute rigor: *What is the most accurate way to predict the future of this time series?*
 
-Named after [Laplace's Demon](https://en.wikipedia.org/wiki/Laplace%27s_demon), this app bridges the gap between hardcore data science labs and executive boardrooms. It pits zero-shot Foundation Models (**Amazon Chronos**) against battle-tested statistical baselines (**ETS, Theta, Seasonal Naive**) in a rigorous, zero-leakage backtest—all wrapped in a vibrant, minimalist, zero-friction UI.
+Named after [Laplace's Demon](https://en.wikipedia.org/wiki/Laplace%27s_demon), this app bridges the gap between hardcore data science labs and executive boardrooms. It pits zero-shot Foundation Models (**Google TimesFM, Amazon Chronos**) against battle-tested statistical baselines (**ETS, Theta, Seasonal Naive**) in a rigorous, zero-leakage backtest—all wrapped in a vibrant, minimalist, zero-friction UI.
 
 ## 🧠 Why Laplace?
 
 Most forecasting tools are either too simple (ignoring confidence intervals and signal validation) or too complex (requiring 50 lines of Python just to see a trend). Laplace is built differently:
 
-- **Smart Heuristics:** Drop a CSV or Excel file. Laplace automatically detects temporal indices and target variables. No configuration needed.
-- **Rigor by Default:** We don't just fit a model and hope for the best. Laplace decomposes the signal (STL), calculates Autocorrelation (ACF/PACF), and generates a **Forecastability Score** ($R^2$ of Trend+Seasonality over Residuals) before a single prediction is made.
-- **Foundation Models vs. The Classics:** Automatically backtest `amazon/chronos-bolt-small` alongside `AutoETS` and `AutoTheta` using a rolling-origin validation engine. 
-- **Boardroom Ready:** The winning model generates future quantiles (80% Confidence Intervals) that can be exported to a clean CSV in one click.
+- **Smart Heuristics & Real-World Scenarios:** Drop a CSV or select from our hardcore benchmark suite (S&P 500, VIX, Walmart M5 Demand, National Grid). Laplace auto-detects temporal indices and targets.
+- **The Principal Data Analyst Lab (EDA):** We don't just fit a model and hope for the best. The Diagnostics engine decomposes the signal (STL), calculates Autocorrelation (ACF/PACF), flags **Anomalies** (Isolation Forest), identifies **Trend Changepoints** (Ruptures), computes heavy-tailed statistics (Skewness, Kurtosis), and generates a **Forecastability Score** ($R^2$ of Trend+Seasonality over Residuals).
+- **Foundation Models vs. The Classics:** Automatically backtest `google/timesfm-1.0-200m`, `amazon/chronos-bolt-base`, `AutoETS`, and `AutoTheta` using a rolling-origin validation engine. PyTorch automatically leverages Apple MPS acceleration if available.
+- **Export Studio:** The winning model generates future quantiles (80% Confidence Intervals) ready for the boardroom. Customize your CSV export, include/exclude historical data, and get an instant Python Pandas snippet to reproduce the exact visualization in your Jupyter Notebook.
 
 ## 🏗 Architecture
 
@@ -27,7 +27,8 @@ Laplace is built on a modern, decoupled stack prioritizing speed and visual exce
 - **FastAPI** — High-performance async API.
 - **uv** — Lightning-fast Python package and environment manager.
 - **StatsForecast** (`Nixtla`) — Blazing fast C++ implementations of classical baselines.
-- **Chronos Forecasting** (`Amazon`) — Deep learning zero-shot forecasting via PyTorch/HuggingFace.
+- **TimesFM & Chronos** (`Google/Amazon`) — Deep learning zero-shot forecasting via PyTorch/HuggingFace.
+- **Scikit-Learn & Ruptures** — State-of-the-art anomaly and changepoint detection.
 
 ### Interface (Frontend)
 - **React 18 + Vite** — Snappy SPA navigation.
@@ -49,12 +50,12 @@ cd backend
 # Create virtual environment and install dependencies
 uv venv
 source .venv/bin/activate
-uv pip install -r requirements.txt # (or install directly via uv pip install fastapi uvicorn statsforecast chronos-forecasting pandas torch)
+uv pip install -r requirements.txt # (Ensure you have torch, timesfm, chronos-forecasting, scikit-learn, ruptures)
 
 # Run the API
 uvicorn main:app --reload --port 8000
 ```
-> **Note:** The first time you run a validation, the Chronos PyTorch model (~150MB) will be downloaded and cached locally.
+> **Note:** The first time you run a validation, the Foundation Models (~1GB total) will be downloaded and cached locally.
 
 ### 2. Start the Interface (Frontend)
 ```bash
@@ -71,10 +72,10 @@ The app will be available at `http://localhost:5173`.
 
 ## 🧪 The Workflow
 
-1. **Input:** Select a reference dataset (like *Air Passengers*) or upload your own.
-2. **Diagnostics:** Analyze the STL Decomposition and Forecastability Score to understand the underlying signal mechanics.
-3. **Validation:** Laplace splits your data, holds out a horizon, and forces the models to compete. A Leaderboard ranks them by sMAPE.
-4. **Forecast:** The winning architecture projects into the true future, generating actionable quantiles ready for CSV export.
+1. **Input:** Select a rigorous benchmark (Economics, Demand, Supply) or upload your own chaotic dataset.
+2. **Diagnostics & EDA:** Geek out. Analyze the Structural Changepoints, Isolation Forest Anomalies, and the Forecastability Score to understand the underlying signal mechanics.
+3. **Validation:** Laplace splits your data, holds out a horizon, and forces Google and Amazon to compete against classical math. A Leaderboard ranks them by sMAPE.
+4. **Forecast & Export Studio:** The winning architecture projects into the true future. Customize your quantiles, copy the Pandas reproducibility snippet, and download the Boardroom-Ready CSV.
 
 ## 📜 License
 MIT License. Built for forecasting enthusiasts.

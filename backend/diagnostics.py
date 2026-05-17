@@ -1,25 +1,43 @@
 import pandas as pd
 import numpy as np
+import math
 from statsmodels.tsa.seasonal import STL
 from statsmodels.tsa.stattools import acf, pacf
+from sklearn.ensemble import IsolationForest
+import ruptures as rpt
+from scipy.stats import skew, kurtosis
 
 def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
     """
-    Computes STL decomposition, ACF, PACF, and a Forecastability Score.
+    Computes STL decomposition, ACF, PACF, Forecastability Score, Basic Stats, 
+    Anomalies (Isolation Forest), and Changepoints (Ruptures).
     """
-    # Prepare data
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values(date_col).set_index(date_col)
     
-    y = df[target_col].astype(float).interpolate(method='linear').bfill().ffill()
+    # Pre-interpolation data for stats
+    y_raw = df[target_col].astype(float)
+    
+    # Basic Stats
+    stats = {
+        "count": len(y_raw),
+        "missing_pct": float(np.round((y_raw.isna().sum() / len(y_raw)) * 100, 2)),
+        "zeros_pct": float(np.round(((y_raw == 0).sum() / len(y_raw)) * 100, 2)),
+        "mean": float(np.round(y_raw.mean(), 2)),
+        "std": float(np.round(y_raw.std(), 2)),
+        "min": float(np.round(y_raw.min(), 2)),
+        "max": float(np.round(y_raw.max(), 2)),
+        "skewness": float(np.round(skew(y_raw.dropna()), 2)),
+        "kurtosis": float(np.round(kurtosis(y_raw.dropna()), 2))
+    }
+    
+    # Interpolate
+    y = y_raw.interpolate(method='linear').bfill().ffill()
     n = len(y)
     
-    # Infer period heuristically or default to a reasonable value
     inferred_freq = pd.infer_freq(df.index)
-    
-    # Simple mapping of freq to period length for STL
-    period = 12 # Default to monthly/yearly pattern for unknown
+    period = 12 
     if inferred_freq:
         freq_str = str(inferred_freq).lower()
         if 'd' in freq_str: period = 7
@@ -27,11 +45,10 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         elif 'q' in freq_str: period = 4
         elif 'm' in freq_str: period = 12
     elif n > 14 and n < 100:
-        period = 7 # Guess weekly
+        period = 7 
     elif n >= 100:
-        period = 12 # Guess monthly
+        period = 12 
 
-    # Ensure period is strictly less than n/2
     period = min(period, max(2, n // 2 - 1))
     
     # 1. STL Decomposition
@@ -49,22 +66,13 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         var_trend_resid = np.var(res.trend + res.resid)
         var_seas_resid = np.var(res.seasonal + res.resid)
         
-        # 2. Forecastability Score
-        # Trend strength: max(0, 1 - Var(R)/Var(T+R))
         trend_strength = max(0, 1 - var_resid / var_trend_resid) if var_trend_resid > 0 else 0
-        
-        # Seasonal strength: max(0, 1 - Var(R)/Var(S+R))
         seasonal_strength = max(0, 1 - var_resid / var_seas_resid) if var_seas_resid > 0 else 0
-        
-        # Overall signal strength (R^2 of T+S)
         signal_r2 = max(0, 1 - var_resid / var_orig) if var_orig > 0 else 0
         
-        # Base score 0-100
         score_val = float(signal_r2 * 100)
-        
-        # Penalize for small data
         if n < period * 3:
-            score_val *= 0.8 # 20% penalty
+            score_val *= 0.8 
             
         score_val = min(100.0, max(0.0, score_val))
         
@@ -77,7 +85,6 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
             
     except Exception as e:
         print(f"STL Error: {e}")
-        # Fallbacks
         trend = observed = y.tolist()
         seasonal = [0]*n
         resid = [0]*n
@@ -86,7 +93,7 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         trend_strength = 0
         seasonal_strength = 0
 
-    # 3. ACF and PACF
+    # 2. ACF and PACF
     nlags = min(40, n // 2 - 1)
     try:
         acf_vals = acf(y, nlags=nlags, fft=True).tolist()
@@ -95,11 +102,42 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         acf_vals = []
         pacf_vals = []
 
-    # Dates as strings for frontend
+    # 3. Anomaly Detection (Isolation Forest)
+    anomalies = []
+    try:
+        iso = IsolationForest(contamination=0.05, random_state=42)
+        y_array = np.array(y).reshape(-1, 1)
+        preds = iso.fit_predict(y_array)
+        anomaly_indices = np.where(preds == -1)[0]
+        anomalies = anomaly_indices.tolist()
+    except Exception as e:
+        print(f"Anomaly detection error: {e}")
+        
+    # 4. Trend Changepoints (Ruptures Binseg)
+    changepoints = []
+    try:
+        # Binary segmentation on the trend or raw data
+        # We use trend to avoid seasonal noise triggering changes
+        signal = np.array(trend).reshape(-1, 1)
+        algo = rpt.Binseg(model="l2").fit(signal)
+        # 1 changepoint per 100 points roughly, max 5
+        n_bkps = min(5, max(1, n // 100))
+        result = algo.predict(n_bkps=n_bkps)
+        # ruptures returns the index of the changepoints (end points of segments)
+        # remove the last index which is just the length of the array
+        if result and result[-1] == n:
+            result = result[:-1]
+        changepoints = result
+    except Exception as e:
+        print(f"Changepoint detection error: {e}")
+
     dates = df.index.astype(str).tolist()
 
     return {
         "dates": dates,
+        "stats": stats,
+        "anomalies": anomalies, # list of indices
+        "changepoints": changepoints, # list of indices
         "stl": {
             "observed": observed,
             "trend": trend,

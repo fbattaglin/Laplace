@@ -3,6 +3,7 @@ const API_BASE = "http://127.0.0.1:8000/api";
 export interface DatasetInfo {
   name: string;
   description: string;
+  problem_statement?: string;
 }
 
 export interface DatasetResponse {
@@ -46,6 +47,19 @@ export interface DiagnosticsRequest {
 
 export interface DiagnosticsResponse {
   dates: string[];
+  stats: {
+    count: number;
+    missing_pct: number;
+    zeros_pct: number;
+    mean: number;
+    std: number;
+    min: number;
+    max: number;
+    skewness: number;
+    kurtosis: number;
+  };
+  anomalies: number[];
+  changepoints: number[];
   stl: {
     observed: number[];
     trend: number[];

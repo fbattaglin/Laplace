@@ -24,6 +24,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 class DatasetInfo(BaseModel):
     name: str
     description: str
+    problem_statement: str = ""
 
 @app.get("/api/health")
 def health_check():
@@ -32,8 +33,31 @@ def health_check():
 @app.get("/api/datasets", response_model=List[DatasetInfo])
 def list_datasets():
     return [
-        {"name": "air_passengers", "description": "Monthly airline passengers (1949-1960)"},
-        {"name": "daily_temperatures", "description": "Daily minimum temperatures in Melbourne"}
+        {
+            "name": "air_passengers", 
+            "description": "Monthly airline passengers (1949-1960)",
+            "problem_statement": "Predict monthly ticket sales to optimize fleet capacity."
+        },
+        {
+            "name": "sp500", 
+            "description": "S&P 500 Daily Closing Price (2018-2023)",
+            "problem_statement": "Economics: High-variance random walk. Predict macro market direction."
+        },
+        {
+            "name": "vix", 
+            "description": "CBOE Volatility Index (2018-2023)",
+            "problem_statement": "Economics: Mean-reverting volatility. Forecast periods of market fear."
+        },
+        {
+            "name": "walmart_m5", 
+            "description": "Walmart M5 Daily Demand (Synthetic)",
+            "problem_statement": "Demand: Intermittent spikes and heavy holiday seasonality. Optimize inventory."
+        },
+        {
+            "name": "national_grid", 
+            "description": "National Grid Energy Load MW (Synthetic)",
+            "problem_statement": "Supply: Dual-seasonality (weekly & yearly). Prevent power grid overload."
+        }
     ]
 
 @app.get("/api/datasets/{name}")

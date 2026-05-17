@@ -5,16 +5,15 @@ from statsforecast import StatsForecast
 from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive
 import os
 
-# Chronos configuration
-CHRONOS_MODEL_ID = "amazon/chronos-bolt-small"
-device = "mps" if torch.backends.mps.is_available() else "cpu"
+CHRONOS_MODELS = {
+    "Chronos-Bolt-Small": "amazon/chronos-bolt-small",
+    "Chronos-Bolt-Base": "amazon/chronos-bolt-base"
+}
 
 def generate_future_dates(last_date: pd.Timestamp, freq_str: str, h: int) -> pd.DatetimeIndex:
-    # A simple helper to generate future dates since we don't strictly have a constant freq
     try:
         return pd.date_range(start=last_date, periods=h+1, freq=freq_str)[1:]
     except:
-        # Fallback to daily if frequency is weird or None
         return pd.date_range(start=last_date, periods=h+1, freq='D')[1:]
 
 def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: str, h: int = 12):
@@ -45,20 +44,53 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
     lower_pred = []
     upper_pred = []
     
-    if model_name.startswith("Chronos"):
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    
+    if model_name in CHRONOS_MODELS:
         try:
             from chronos import ChronosPipeline
-            pipeline = ChronosPipeline.from_pretrained(CHRONOS_MODEL_ID, device_map=device, torch_dtype=torch.float32)
+            repo_id = CHRONOS_MODELS[model_name]
+            pipeline = ChronosPipeline.from_pretrained(repo_id, device_map=device, torch_dtype=torch.float32)
             context_tensor = torch.tensor(y)
-            forecast_chronos = pipeline.predict(context_tensor, prediction_length=h)
+            forecast = pipeline.predict(context_tensor, prediction_length=h)
             
-            samples = forecast_chronos[0].numpy()
+            samples = forecast[0].numpy()
             mean_pred = np.quantile(samples, 0.5, axis=0).tolist()
             lower_pred = np.quantile(samples, 0.1, axis=0).tolist()
             upper_pred = np.quantile(samples, 0.9, axis=0).tolist()
         except Exception as e:
             print(f"Chronos error: {e}")
             raise ValueError(f"Chronos generation failed: {e}")
+            
+    elif model_name == "TimesFM-200M":
+        try:
+            import timesfm
+            tfm = timesfm.TimesFm(
+                hparams=timesfm.TimesFmHparams(
+                    backend="cpu",
+                    per_core_batch_size=1,
+                    horizon_len=128,
+                    context_len=512,
+                    quantiles=[0.1, 0.5, 0.9]
+                ),
+                checkpoint=timesfm.TimesFmCheckpoint(
+                    huggingface_repo_id="google/timesfm-1.0-200m-pytorch"
+                )
+            )
+            inputs = [y.tolist()]
+            point_forecast, quantiles_forecast = tfm.forecast(inputs, freq=[0])
+            
+            # slice h
+            mean_pred = point_forecast[0][:h].tolist()
+            # timesfm returns 10 quantiles by default, unless overridden.
+            # with our override, index 0 is 0.1, index 1 is 0.5, index 2 is 0.9
+            lower_pred = quantiles_forecast[0][:h, 0].tolist()
+            upper_pred = quantiles_forecast[0][:h, 2].tolist()
+            
+        except Exception as e:
+            print(f"TimesFM error: {e}")
+            raise ValueError(f"TimesFM generation failed: {e}")
+            
     else:
         # Classical models
         model_map = {
@@ -67,7 +99,6 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
             'Theta': AutoTheta(season_length=period)
         }
         
-        # Select the requested model or default to ETS
         sf_model = model_map.get(model_name, AutoETS(season_length=period))
         
         df_train = pd.DataFrame({
@@ -78,13 +109,10 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
         
         sf = StatsForecast(models=[sf_model], freq=freq_str, n_jobs=1)
         sf.fit(df_train)
-        
-        # Predict with 80% confidence interval (10th to 90th percentile)
         forecasts = sf.predict(h=h, level=[80])
         
         col_prefix = model_name
         if model_name not in forecasts.columns:
-            # StatsForecast output columns are usually the class name
             if model_name == 'ETS': col_prefix = 'AutoETS'
             elif model_name == 'Theta': col_prefix = 'AutoTheta'
         
@@ -92,7 +120,6 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
         lower_pred = forecasts[f'{col_prefix}-lo-80'].values.tolist()
         upper_pred = forecasts[f'{col_prefix}-hi-80'].values.tolist()
 
-    # Log to CSV
     log_data = []
     for i in range(h):
         log_data.append({
