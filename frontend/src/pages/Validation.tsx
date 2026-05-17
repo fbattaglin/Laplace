@@ -62,9 +62,14 @@ export default function Validation() {
       const res = await runValidation(req);
       setData(res);
       if (res.metrics.length > 0) {
-        setRecommendedWinner(res.metrics[0].model);
-        setSelectedWinner(res.metrics[0].model);
-        localStorage.setItem('laplace_winner', res.metrics[0].model); // default save
+        const topModel = res.metrics[0].model;
+        setRecommendedWinner(topModel);
+        setSelectedWinner(topModel);
+        localStorage.setItem('laplace_winner', topModel);
+        localStorage.setItem('laplace_recommended_winner', topModel);
+        localStorage.setItem('laplace_winner_is_override', 'false');
+        // Save the full metrics for Step 4 to use
+        localStorage.setItem('laplace_validation_metrics', JSON.stringify(res.metrics));
       }
     } catch (err: any) {
       setError(err.message);
@@ -270,6 +275,9 @@ export default function Validation() {
                       onChange={() => {
                         setSelectedWinner(m.model);
                         localStorage.setItem('laplace_winner', m.model);
+                        localStorage.setItem('laplace_winner_is_override', 
+                          m.model !== recommendedWinner ? 'true' : 'false'
+                        );
                       }}
                     />
                   </div>

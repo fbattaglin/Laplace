@@ -28,18 +28,39 @@ const LaplaceConsole = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Render with indigo-accented prompt lines
+  const lines = displayedText.split('\n');
+
   return (
-    <div className="mb-8 p-4 bg-[#111111] rounded-xl border border-white/10 font-mono text-[12px] leading-relaxed text-[#00FF41] shadow-inner">
-      <div className="flex items-center gap-2 mb-3 opacity-50">
-        <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
-        <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
-        <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
-        <span className="ml-2 text-white font-sans text-[10px] tracking-wider uppercase opacity-70">daemon.log</span>
+    <div className="mb-8 p-4 bg-[#1C1C1E] rounded-xl border border-white/8 font-mono text-[12px] leading-relaxed shadow-lg">
+      <div className="flex items-center gap-2 mb-3 opacity-60">
+        <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
+        <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+        <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
+        <span className="ml-2 text-[#F5F5F7] font-sans text-[10px] tracking-wider uppercase opacity-70">daemon.log</span>
       </div>
-      <div className="whitespace-pre-wrap">{displayedText}<span className="animate-pulse font-bold text-white">_</span></div>
+      <div className="whitespace-pre-wrap">
+        {lines.map((line, idx) => {
+          const isPrompt = line.startsWith('>');
+          return (
+            <div key={idx}>
+              {isPrompt ? (
+                <span>
+                  <span className="text-[#6366F1] font-semibold">&gt;</span>
+                  <span className="text-[#F5F5F7]">{line.slice(1)}</span>
+                </span>
+              ) : (
+                <span className="text-[#F5F5F7]">{line}</span>
+              )}
+            </div>
+          );
+        })}
+        <span className="animate-pulse font-bold text-[#6366F1]">_</span>
+      </div>
     </div>
   );
 };
+
 
 export default function DataInput() {
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);

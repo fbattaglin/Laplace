@@ -29,6 +29,10 @@ export default function Layout() {
     if (window.confirm("WARNING: This will clear your current dataset, models, and forecasts. Do you want to start a new project?")) {
       localStorage.removeItem('laplace_dataset');
       localStorage.removeItem('laplace_winner');
+      localStorage.removeItem('laplace_recommended_winner');
+      localStorage.removeItem('laplace_winner_is_override');
+      localStorage.removeItem('laplace_validation_metrics');
+      localStorage.removeItem('laplace_horizon');
       sessionStorage.removeItem('laplace_forecast_data');
       navigate('/input');
     }
@@ -40,9 +44,13 @@ export default function Layout() {
       <header className="border-b border-base-surface/50 bg-white sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 h-32 flex items-center justify-between">
           {/* Logo Zone */}
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <img src="/logo-header.png" alt="Laplace Logo" className="h-24 w-auto object-contain" />
-            <span className="font-bold text-3xl tracking-tight mt-2">Laplace</span>
+          <div className="flex items-center flex-shrink-0">
+            <img 
+              src="/logo-header.png" 
+              alt="Laplace Logo" 
+              className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-300 cursor-pointer" 
+              onClick={() => navigate('/input')} 
+            />
           </div>
           
           {/* Stepper Zone */}

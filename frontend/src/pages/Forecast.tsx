@@ -1,29 +1,62 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, AlertTriangle, Lightbulb, Rocket, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Rocket, ChevronRight, TrendingUp, TrendingDown, Minus, ShieldAlert, BarChart2, Activity } from 'lucide-react';
 import { Line, Area, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { runForecast, type ForecastRequest, type ForecastResponse } from '../lib/api';
+import clsx from 'clsx';
 
 const MODEL_COLORS: Record<string, string> = {
   'Chronos-T5-Small': '#0066FF',
   'TimesFM-200M': '#34A853',
+  'AutoARIMA': '#9D00FF',
   'ARIMA': '#9D00FF',
+  'AutoETS': '#FF6B00',
   'ETS': '#FF6B00',
   'Theta': '#FFC700',
   'SeasonalNaive': '#FF2A3A'
 };
+
+interface ModelMetrics { model: string; sMAPE: number; MASE: number; RMSE: number; }
+
+function fmt(n: number, decimals = 0): string {
+  if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return n.toFixed(decimals);
+}
+
+function pct(a: number, b: number): string {
+  if (b === 0) return '—';
+  return ((a - b) / Math.abs(b) * 100).toFixed(1) + '%';
+}
 
 export default function Forecast() {
   const [config, setConfig] = useState<ForecastRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ForecastResponse | null>(null);
+  const [isOverride, setIsOverride] = useState(false);
+  const [recommendedWinner, setRecommendedWinner] = useState<string | null>(null);
+  const [modelMetrics, setModelMetrics] = useState<ModelMetrics | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('laplace_dataset');
     const winner = localStorage.getItem('laplace_winner') || 'ETS';
     const horizon = parseInt(localStorage.getItem('laplace_horizon') || '12', 10);
-    
+    const override = localStorage.getItem('laplace_winner_is_override') === 'true';
+    const recommended = localStorage.getItem('laplace_recommended_winner');
+    const metricsRaw = localStorage.getItem('laplace_validation_metrics');
+
+    setIsOverride(override && winner !== recommended);
+    setRecommendedWinner(recommended);
+
+    if (metricsRaw) {
+      try {
+        const allMetrics: ModelMetrics[] = JSON.parse(metricsRaw);
+        const mine = allMetrics.find(m => m.model === winner) || null;
+        setModelMetrics(mine);
+      } catch (_) {}
+    }
+
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -86,22 +119,36 @@ export default function Forecast() {
 
   if (!data) return null;
 
-  // Chart Data Preparation
+  // ── Derived Insights ────────────────────────────────────────────────────
+  const lastActual = data.history.actual[data.history.actual.length - 1];
+  const firstForecast = data.forecast.mean[0];
+  const lastForecast = data.forecast.mean[data.forecast.mean.length - 1];
+  const totalChange = lastForecast - lastActual;
+  const totalChangePct = lastActual !== 0 ? (totalChange / Math.abs(lastActual)) * 100 : 0;
+
+  const avgCI = data.forecast.mean.reduce((acc, v, i) => {
+    return acc + (data.forecast.upper[i] - data.forecast.lower[i]);
+  }, 0) / data.forecast.mean.length;
+  const avgCIPct = data.forecast.mean.reduce((acc, v) => acc + Math.abs(v), 0) / data.forecast.mean.length;
+  const ciWidthPct = avgCIPct > 0 ? (avgCI / avgCIPct) * 100 : 0;
+
+  const direction: 'up' | 'down' | 'flat' =
+    Math.abs(totalChangePct) < 1 ? 'flat' : totalChange > 0 ? 'up' : 'down';
+
+  const confidenceLabel =
+    ciWidthPct < 10 ? 'High' : ciWidthPct < 25 ? 'Moderate' : ciWidthPct < 50 ? 'Low' : 'Very Low';
+  const confidenceColor =
+    ciWidthPct < 10 ? 'text-accent-success' : ciWidthPct < 25 ? 'text-accent-warning' : 'text-accent-alert';
+
+  // ── Chart prep ──────────────────────────────────────────────────────────
   const chartData: any[] = [];
   const historyLen = data.history.dates.length;
-  const cutoff = Math.max(0, historyLen - 60); // Show last 60 points of history
+  const cutoff = Math.max(0, historyLen - 60);
 
   for (let i = cutoff; i < historyLen; i++) {
-    chartData.push({
-      date: data.history.dates[i],
-      actual: data.history.actual[i],
-    });
+    chartData.push({ date: data.history.dates[i], actual: data.history.actual[i] });
   }
-
-  // Connect the last historical point to the first forecast point
   const lastHistoryPoint = chartData[chartData.length - 1];
-  
-  // Forecast Data
   const h = data.horizon;
   for (let i = 0; i < h; i++) {
     chartData.push({
@@ -113,24 +160,44 @@ export default function Forecast() {
 
   const modelColor = MODEL_COLORS[data.model] || '#0066FF';
   const cutoffDate = lastHistoryPoint.date;
+  const isWinnerModel = !isOverride;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+
+      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Forecast</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Forecast</h1>
           <p className="text-base-secondary max-w-2xl">
-            Future projection generated by the winning model <span className="font-bold text-base-primary">{data.model}</span>.
+            {isOverride ? (
+              <>Projection with <span className="font-bold text-base-primary">{data.model}</span> — manually selected over the recommended <span className="font-bold text-base-primary">{recommendedWinner}</span>.</>
+            ) : (
+              <>Projection with <span className="font-bold text-base-primary">{data.model}</span> — top-ranked model from the backtest.</>
+            )}
           </p>
         </div>
       </div>
 
-      {/* Main Forecast Chart */}
-      <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl h-[500px] flex flex-col">
+      {/* Override warning */}
+      {isOverride && recommendedWinner && (
+        <div className="flex items-center gap-3 p-4 bg-accent-warning/10 border border-accent-warning/30 rounded-xl">
+          <ShieldAlert className="text-accent-warning shrink-0" size={20} />
+          <p className="text-sm">
+            <span className="font-bold text-accent-warning">Manual Override Active — </span>
+            <span className="text-base-secondary">
+              You are using <strong>{data.model}</strong> instead of the top-ranked <strong>{recommendedWinner}</strong>. Accuracy may differ from backtest results.
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Main Chart */}
+      <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl h-[480px] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Rocket size={20} className="text-accent-pulse" />
-            <h2 className="text-lg font-semibold">{data.model} Projection (h={data.horizon})</h2>
+            <h2 className="text-lg font-semibold">{data.model} — {data.horizon}-step Projection</h2>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1.5">
@@ -138,12 +205,12 @@ export default function Forecast() {
               <span className="text-base-secondary">Historical</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{backgroundColor: modelColor}} />
-              <span className="text-base-secondary">Expected Forecast</span>
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: modelColor }} />
+              <span className="text-base-secondary">Forecast</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-sm opacity-20" style={{backgroundColor: modelColor}} />
-              <span className="text-base-secondary">80% Confidence Interval</span>
+              <div className="w-4 h-4 rounded-sm opacity-20" style={{ backgroundColor: modelColor }} />
+              <span className="text-base-secondary">80% CI</span>
             </div>
           </div>
         </div>
@@ -151,93 +218,129 @@ export default function Forecast() {
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
-            <XAxis 
-              dataKey="date" 
-              tick={{fontSize: 10, fill: '#6E6E73'}} 
-              axisLine={false}
-              tickLine={false}
-              minTickGap={30}
-            />
-            <YAxis 
-              tick={{fontSize: 10, fill: '#6E6E73'}} 
-              axisLine={false}
-              tickLine={false}
-              domain={['auto', 'auto']}
-              width={40}
-            />
-            <Tooltip 
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6E6E73' }} axisLine={false} tickLine={false} minTickGap={30} />
+            <YAxis tick={{ fontSize: 10, fill: '#6E6E73' }} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={50} tickFormatter={(v) => fmt(v)} />
+            <Tooltip
               contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               labelStyle={{ fontWeight: 'bold', marginBottom: '4px', color: '#111111' }}
+              formatter={(value: any, name: string) => {
+                if (name === 'Forecast') return [fmt(value, 1), name];
+                if (name === 'Actual') return [fmt(value, 1), name];
+                return [value, name];
+              }}
             />
-            
             <ReferenceLine x={cutoffDate} stroke="#6E6E73" strokeDasharray="3 3" label={{ position: 'top', value: 'Today', fill: '#6E6E73', fontSize: 12 }} />
-
-            {/* Confidence Interval Area */}
-            <Area 
-              type="monotone" 
-              dataKey="interval" 
-              stroke="none" 
-              fill={modelColor} 
-              fillOpacity={0.15} 
-              activeDot={false}
-            />
-
-            {/* Historical Data */}
-            <Line 
-              type="monotone" 
-              dataKey="actual" 
-              stroke="#111111" 
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4, fill: '#111111', stroke: 'none' }}
-              name="Actual"
-            />
-            
-            {/* Forecast Mean */}
-            <Line 
-              type="monotone" 
-              dataKey="mean" 
-              stroke={modelColor} 
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4, fill: modelColor, stroke: 'none' }}
-              name="Forecast"
-              connectNulls
-            />
-
+            <Area type="monotone" dataKey="interval" stroke="none" fill={modelColor} fillOpacity={0.15} activeDot={false} />
+            <Line type="monotone" dataKey="actual" stroke="#111111" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#111111', stroke: 'none' }} name="Actual" />
+            <Line type="monotone" dataKey="mean" stroke={modelColor} strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: modelColor, stroke: 'none' }} name="Forecast" connectNulls />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Boardroom summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 bg-base-surface rounded-xl border border-base-secondary/20 flex flex-col justify-center">
-          <Lightbulb className="text-accent-warning mb-3" size={24} />
-          <h3 className="font-bold mb-1">Boardroom Ready</h3>
-          <p className="text-sm text-base-secondary">
-            Download the CSV to feed directly into your BI dashboards or presentation slides. The 80% confidence interval covers the most likely scenarios.
-          </p>
-        </div>
-        <div className="p-6 bg-base-surface rounded-xl border border-base-secondary/20 flex flex-col justify-center">
-          <div className="text-2xl font-bold text-base-primary mb-1">{data.horizon}</div>
-          <h3 className="font-bold mb-1">Steps Ahead</h3>
-          <p className="text-sm text-base-secondary">
-            The model generated a projection for the next {data.horizon} periods based on the patterns learned in the validation phase.
-          </p>
-        </div>
-        <div className="p-6 bg-base-surface rounded-xl border border-base-secondary/20 flex flex-col justify-center">
-          <div className="w-8 h-8 rounded-full mb-3 flex items-center justify-center text-white font-bold" style={{backgroundColor: modelColor}}>
-            {data.model.charAt(0)}
+      {/* Insight Cards — data-driven */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        {/* Card 1: Projected Change */}
+        <div className="p-5 bg-white rounded-xl border border-base-secondary/20">
+          <div className="flex items-center gap-2 mb-3">
+            {direction === 'up' && <TrendingUp size={18} className="text-accent-success" />}
+            {direction === 'down' && <TrendingDown size={18} className="text-accent-alert" />}
+            {direction === 'flat' && <Minus size={18} className="text-base-secondary" />}
+            <span className="text-xs font-medium text-base-secondary uppercase tracking-wider">Projected Change</span>
           </div>
-          <h3 className="font-bold mb-1">Winning Architecture</h3>
-          <p className="text-sm text-base-secondary">
-            {data.model} was automatically selected because it achieved the lowest error margin during the holdout backtesting.
-          </p>
+          <div className={clsx(
+            "text-3xl font-bold mb-1",
+            direction === 'up' ? 'text-accent-success' : direction === 'down' ? 'text-accent-alert' : 'text-base-secondary'
+          )}>
+            {totalChangePct >= 0 ? '+' : ''}{totalChangePct.toFixed(1)}%
+          </div>
+          <div className="text-sm text-base-secondary">
+            {direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→'}&nbsp;
+            {fmt(Math.abs(totalChange), 0)} over {data.horizon} steps
+          </div>
+          <div className="mt-2 text-xs text-base-secondary">
+            Last value: <span className="font-medium text-base-primary">{fmt(lastActual, 1)}</span> →{' '}
+            End forecast: <span className="font-medium text-base-primary">{fmt(lastForecast, 1)}</span>
+          </div>
+        </div>
+
+        {/* Card 2: Forecast Confidence */}
+        <div className="p-5 bg-white rounded-xl border border-base-secondary/20">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity size={18} className="text-accent-pulse" />
+            <span className="text-xs font-medium text-base-secondary uppercase tracking-wider">Forecast Confidence</span>
+          </div>
+          <div className={clsx("text-3xl font-bold mb-1", confidenceColor)}>
+            {confidenceLabel}
+          </div>
+          <div className="text-sm text-base-secondary">
+            Avg CI width: ±{(ciWidthPct / 2).toFixed(1)}% of forecast value
+          </div>
+          <div className="mt-2 text-xs text-base-secondary">
+            {ciWidthPct < 10
+              ? 'Tight bounds — model is highly certain.'
+              : ciWidthPct < 25
+              ? 'Moderate spread — reasonable confidence.'
+              : 'Wide bounds — treat as a range, not a point.'}
+          </div>
+        </div>
+
+        {/* Card 3: Model Performance (from backtest) */}
+        <div className="p-5 bg-white rounded-xl border border-base-secondary/20">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart2 size={18} className="text-accent-pulse" />
+            <span className="text-xs font-medium text-base-secondary uppercase tracking-wider">Backtest Accuracy</span>
+          </div>
+          {modelMetrics ? (
+            <>
+              <div className="text-3xl font-bold mb-1 text-base-primary">
+                {modelMetrics.sMAPE}%
+                <span className="text-sm font-normal text-base-secondary ml-1">sMAPE</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <div className="text-[10px] text-base-secondary uppercase">MASE</div>
+                  <div className="text-sm font-semibold">{modelMetrics.MASE}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-base-secondary uppercase">RMSE</div>
+                  <div className="text-sm font-semibold">{fmt(modelMetrics.RMSE, 1)}</div>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-base-secondary">
+                {isWinnerModel ? '🏆 Top-ranked model on holdout set.' : `Ranked below ${recommendedWinner} on holdout set.`}
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-base-secondary">Run Step 3 first to see backtest metrics.</div>
+          )}
+        </div>
+
+        {/* Card 4: Horizon Context */}
+        <div className="p-5 bg-white rounded-xl border border-base-secondary/20">
+          <div className="flex items-center gap-2 mb-3">
+            <Rocket size={18} className="text-accent-pulse" />
+            <span className="text-xs font-medium text-base-secondary uppercase tracking-wider">Horizon</span>
+          </div>
+          <div className="text-3xl font-bold mb-1 text-base-primary">
+            {data.horizon}
+            <span className="text-sm font-normal text-base-secondary ml-1">steps</span>
+          </div>
+          <div className="text-sm text-base-secondary mb-2">
+            {data.forecast.dates[0]} → {data.forecast.dates[data.forecast.dates.length - 1]}
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className={clsx("px-2 py-0.5 rounded-full font-medium", isWinnerModel ? 'bg-accent-success/10 text-accent-success' : 'bg-accent-warning/10 text-accent-warning')}>
+              {isWinnerModel ? '✓ Recommended' : '⚠ Override'}
+            </div>
+            <span className="text-base-secondary">{data.model}</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-end pt-8 pb-4">
-        <button 
+      {/* CTA */}
+      <div className="flex justify-end pt-4 pb-4">
+        <button
           onClick={() => window.location.href = '/export'}
           className="flex items-center gap-2 px-8 py-4 bg-accent-success text-white rounded-xl font-bold text-lg hover:bg-accent-success/90 hover:-translate-y-0.5 transition-all shadow-lg shadow-accent-success/20 active:translate-y-0"
         >
