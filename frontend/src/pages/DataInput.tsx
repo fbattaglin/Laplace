@@ -4,24 +4,92 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { fetchDatasets, loadDataset, uploadDataset, type DatasetResponse, type DatasetInfo } from '../lib/api';
 import clsx from 'clsx';
 
+const getBadgeColor = (tag: string) => {
+  const colors: Record<string, string> = {
+    'Economics': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'Demand': 'bg-blue-100 text-blue-800 border-blue-200',
+    'Retail': 'bg-blue-100 text-blue-800 border-blue-200',
+    'Energy': 'bg-amber-100 text-amber-800 border-amber-200',
+    'High-Noise': 'bg-red-100 text-red-800 border-red-200',
+    'Mean-Reverting': 'bg-rose-100 text-rose-800 border-rose-200',
+    'Random-Walk': 'bg-stone-100 text-stone-800 border-stone-200',
+    'Seasonal': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+    'Dual-Seasonality': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+    'Stable': 'bg-slate-100 text-slate-800 border-slate-200',
+    'Trend': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    'Intermittent': 'bg-orange-100 text-orange-800 border-orange-200',
+  };
+  return colors[tag] || 'bg-gray-100 text-gray-800 border-gray-200';
+};
+
+const LaplaceConsole = () => {
+  const text = `> "An intellect which at a certain moment would know all forces that set nature in motion, and all positions of all items of which nature is composed... for such an intellect nothing would be uncertain and the future just like the past would be present before its eyes."\n> initializing forecasting engine...\n> tensors calibrated.`;
+  const [displayedText, setDisplayedText] = useState("");
+  
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      setDisplayedText(text.substring(0, i));
+      i++;
+      if (i > text.length) clearInterval(interval);
+    }, 15);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="mb-8 p-4 bg-[#111111] rounded-xl border border-white/10 font-mono text-[12px] leading-relaxed text-[#00FF41] shadow-inner">
+      <div className="flex items-center gap-2 mb-3 opacity-50">
+        <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]"></div>
+        <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]"></div>
+        <span className="ml-2 text-white font-sans text-[10px] tracking-wider uppercase opacity-70">daemon.log</span>
+      </div>
+      <div className="whitespace-pre-wrap">{displayedText}<span className="animate-pulse font-bold text-white">_</span></div>
+    </div>
+  );
+};
+
 export default function DataInput() {
   const [datasets, setDatasets] = useState<DatasetInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DatasetResponse | null>(null);
   const [activeDataset, setActiveDataset] = useState<string | null>(null);
+  const [funMessage, setFunMessage] = useState("");
 
   useEffect(() => {
     fetchDatasets().then(setDatasets).catch(e => console.error("Failed to load datasets", e));
   }, []);
 
+  const triggerFunMessage = () => {
+    const messages = [
+      "Awakening the Demon...",
+      "Calibrating quantum tensors...",
+      "Extracting signal from noise...",
+      "Summoning foundation models...",
+      "Looking into the future..."
+    ];
+    setFunMessage(messages[Math.floor(Math.random() * messages.length)]);
+  };
+
+  const resetWorkspaceState = () => {
+    localStorage.removeItem('laplace_dataset');
+    localStorage.removeItem('laplace_winner');
+    sessionStorage.removeItem('laplace_forecast_data');
+  };
+
   const handleLoadReference = async (name: string) => {
     try {
+      triggerFunMessage();
       setLoading(true);
       setError(null);
       setActiveDataset(name);
+      
       const res = await loadDataset(name);
       setData(res);
+      
+      resetWorkspaceState();
+      
       if (res.suggested_date_col && res.suggested_target_col) {
         localStorage.setItem('laplace_dataset', JSON.stringify({
           dataset_type: 'reference',
@@ -29,6 +97,8 @@ export default function DataInput() {
           date_col: res.suggested_date_col,
           target_col: res.suggested_target_col
         }));
+      } else {
+        setError("Warning: Could not automatically detect Date or Target columns. Diagnostics may fail.");
       }
     } catch (err: any) {
       setError(err.message);
@@ -41,11 +111,16 @@ export default function DataInput() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     try {
+      triggerFunMessage();
       setLoading(true);
       setError(null);
       setActiveDataset(file.name);
+      
       const res = await uploadDataset(file);
       setData(res);
+      
+      resetWorkspaceState();
+      
       if (res.suggested_date_col && res.suggested_target_col) {
         localStorage.setItem('laplace_dataset', JSON.stringify({
           dataset_type: 'upload',
@@ -53,6 +128,8 @@ export default function DataInput() {
           date_col: res.suggested_date_col,
           target_col: res.suggested_target_col
         }));
+      } else {
+        setError("Warning: Could not automatically detect Date or Target columns. Diagnostics may fail.");
       }
     } catch (err: any) {
       setError(err.message);
@@ -63,6 +140,9 @@ export default function DataInput() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      
+      <LaplaceConsole />
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight mb-2">Data Input</h1>
         <p className="text-base-secondary">
@@ -93,15 +173,29 @@ export default function DataInput() {
                 )}
               >
                 <div>
-                  <div className="font-medium capitalize text-base-primary">{ds.name.replace('_', ' ')}</div>
+                  <div className="font-medium capitalize text-base-primary flex items-center gap-2">
+                    {ds.name.replace('_', ' ')}
+                  </div>
+                  
+                  {ds.tags && ds.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2 mb-2">
+                      {ds.tags.map(tag => (
+                        <span key={tag} className={clsx("text-[10px] px-2 py-0.5 rounded-full border font-medium", getBadgeColor(tag))}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="text-xs text-base-secondary mt-1">{ds.description}</div>
+                  
                   {ds.problem_statement && (
                     <div className="text-[11px] text-accent-pulse mt-2 font-medium italic border-l-2 border-accent-pulse pl-2">
                       {ds.problem_statement}
                     </div>
                   )}
                 </div>
-                <ChevronRight size={18} className="text-base-secondary group-hover:text-base-primary transition-colors" />
+                <ChevronRight size={18} className="text-base-secondary group-hover:text-base-primary transition-colors flex-shrink-0 ml-4" />
               </button>
             ))}
           </div>
@@ -124,15 +218,18 @@ export default function DataInput() {
             </div>
             <div className="font-medium mb-1">Click to browse or drag file here</div>
             <div className="text-xs text-base-secondary">CSV or XLSX up to 50MB</div>
+            <div className="text-[10px] text-base-secondary mt-4 bg-base-surface px-3 py-1 rounded-full border border-base-secondary/20">
+              Hint: Try our <b>sample_datasets/</b> folder
+            </div>
           </label>
         </div>
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12 animate-in fade-in">
           <div className="flex flex-col items-center gap-4">
             <div className="w-8 h-8 rounded-full border-4 border-base-surface border-t-accent-pulse animate-spin" />
-            <div className="text-sm text-base-secondary animate-pulse">Processing dataset...</div>
+            <div className="text-sm text-base-secondary font-mono text-accent-pulse">{funMessage}</div>
           </div>
         </div>
       )}
@@ -150,15 +247,15 @@ export default function DataInput() {
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Date Col:</span>
-                <span className="font-medium px-2 py-1 bg-base-surface rounded-md">{data.suggested_date_col || 'Not detected'}</span>
+                <span className="font-medium px-2 py-1 bg-base-surface rounded-md border border-base-secondary/20 shadow-sm">{data.suggested_date_col || 'Not detected'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Target Col:</span>
-                <span className="font-medium px-2 py-1 bg-base-surface rounded-md">{data.suggested_target_col || 'Not detected'}</span>
+                <span className="font-medium px-2 py-1 bg-base-surface rounded-md border border-base-secondary/20 shadow-sm text-accent-pulse">{data.suggested_target_col || 'Not detected'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Rows:</span>
-                <span className="font-medium px-2 py-1 bg-base-surface rounded-md">{data.total_rows}</span>
+                <span className="font-medium px-2 py-1 bg-base-surface rounded-md border border-base-secondary/20 shadow-sm">{data.total_rows}</span>
               </div>
             </div>
           </div>

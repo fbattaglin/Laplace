@@ -18,7 +18,22 @@ export default function Layout() {
         <div className="max-w-6xl mx-auto px-6 h-40 flex items-center justify-between">
           <div className="flex items-center gap-5">
             <img src="/logo-header.png" alt="Laplace Logo" className="h-32 w-auto object-contain" />
-            <span className="font-bold text-4xl tracking-tight">Laplace</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-4xl tracking-tight">Laplace</span>
+              <button 
+                onClick={() => {
+                  if (window.confirm("WARNING: This will clear your current dataset, models, and forecasts. Do you want to start a new project?")) {
+                    localStorage.removeItem('laplace_dataset');
+                    localStorage.removeItem('laplace_winner');
+                    sessionStorage.removeItem('laplace_forecast_data');
+                    window.location.href = '/input';
+                  }
+                }}
+                className="text-xs text-accent-alert font-medium mt-1 hover:underline text-left"
+              >
+                Reset Workspace
+              </button>
+            </div>
           </div>
           
           <nav className="flex items-center gap-6">

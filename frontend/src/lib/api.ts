@@ -4,6 +4,7 @@ export interface DatasetInfo {
   name: string;
   description: string;
   problem_statement?: string;
+  tags?: string[];
 }
 
 export interface DatasetResponse {
