@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, AlertTriangle, TrendingUp, BarChart2, Calculator } from 'lucide-react';
+import { Activity, AlertTriangle, TrendingUp, BarChart2, Calculator, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { runDiagnostics, type DiagnosticsRequest, type DiagnosticsResponse } from '../lib/api';
 import clsx from 'clsx';
@@ -92,6 +92,8 @@ export default function Diagnostics() {
   };
 
   const statCards = [
+    { label: "Start Date", value: data.stats.start_date },
+    { label: "End Date", value: data.stats.end_date },
     { label: "Count", value: data.stats.count },
     { label: "Mean", value: data.stats.mean },
     { label: "Std Dev", value: data.stats.std },
@@ -111,7 +113,23 @@ export default function Diagnostics() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl h-[400px] flex flex-col">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={20} className="text-base-secondary" />
+          <h2 className="text-lg font-semibold">Original Time Series (Observed)</h2>
+        </div>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={stlData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
+            <XAxis dataKey="date" tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} minTickGap={30} />
+            <YAxis tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} domain={['auto', 'auto']} width={40} />
+            <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+            <Line type="monotone" dataKey="observed" stroke="#111111" strokeWidth={2} dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Forecastability Score Card */}
         <div className="lg:col-span-2 p-8 bg-base-surface rounded-2xl border border-base-secondary/20 flex flex-col md:flex-row gap-8 items-center">
           <div className="relative w-32 h-32 flex-shrink-0 flex items-center justify-center">
@@ -135,12 +153,11 @@ export default function Diagnostics() {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <Activity size={20} className={getScoreColor(data.forecastability.score)} />
-              <h2 className="text-xl font-bold">Forecastability Score</h2>
+              <h2 className="text-xl font-bold">Signal-to-Noise Score (R²)</h2>
             </div>
             <p className="text-lg font-medium text-base-primary mb-2">{data.forecastability.label}</p>
             <p className="text-sm text-base-secondary mb-4 leading-relaxed max-w-2xl">
-              This score indicates how predictable the time series is based on its signal-to-noise ratio. 
-              A high score means models will likely capture strong trends and seasonal patterns.
+              This score represents the proportion of variance explained by the trend and seasonal components against the residual noise. A high score indicates a highly predictable, structured series.
             </p>
             <div className="flex gap-4 text-sm">
               <div className="px-3 py-1.5 bg-white border border-base-secondary/20 rounded-md">
@@ -155,17 +172,52 @@ export default function Diagnostics() {
           </div>
         </div>
 
+        {/* Stationarity Analysis Card */}
+        <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={18} className="text-base-secondary" />
+            <h3 className="font-semibold">Stationarity Analysis</h3>
+          </div>
+          <div className="flex flex-col items-center justify-center text-center mb-6">
+            {data.adf_test.is_stationary ? (
+              <CheckCircle className="text-accent-success mb-2" size={32} />
+            ) : (
+              <XCircle className="text-accent-alert mb-2" size={32} />
+            )}
+            <div className="text-lg font-bold">
+              {data.adf_test.is_stationary ? "Stationary" : "Non-Stationary"}
+            </div>
+            <div className="text-xs text-base-secondary mt-1 max-w-[200px]">
+              {data.adf_test.is_stationary 
+                ? "The mean and variance are constant over time. Ideal for ARIMA."
+                : "The series has a unit root. Differencing may be required for linear models."}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-auto">
+            <div className="p-3 bg-base-surface rounded-lg border border-base-secondary/10">
+              <div className="text-xs text-base-secondary mb-1">ADF p-value</div>
+              <div className={clsx("font-medium text-sm", data.adf_test.p_value < 0.05 ? "text-accent-success" : "text-accent-alert")}>
+                {data.adf_test.p_value}
+              </div>
+            </div>
+            <div className="p-3 bg-base-surface rounded-lg border border-base-secondary/10">
+              <div className="text-xs text-base-secondary mb-1">Test Stat</div>
+              <div className="font-medium text-sm">{data.adf_test.test_statistic}</div>
+            </div>
+          </div>
+        </div>
+
         {/* Basic Stats Grid */}
         <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-4">
             <Calculator size={18} className="text-base-secondary" />
             <h3 className="font-semibold">Summary Statistics</h3>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 overflow-auto max-h-[300px] pr-2">
             {statCards.map((stat, i) => (
-              <div key={i} className="p-3 bg-base-surface rounded-lg border border-base-secondary/10">
-                <div className="text-xs text-base-secondary mb-1">{stat.label}</div>
-                <div className="font-medium text-sm">{stat.value}</div>
+              <div key={i} className="p-2 bg-base-surface rounded-lg border border-base-secondary/10 flex flex-col">
+                <div className="text-[10px] text-base-secondary mb-0.5 uppercase tracking-wider">{stat.label}</div>
+                <div className="font-medium text-xs truncate" title={String(stat.value)}>{stat.value}</div>
               </div>
             ))}
           </div>
@@ -266,6 +318,16 @@ export default function Diagnostics() {
             </div>
           </div>
         </div>
+      </div>
+      
+      <div className="flex justify-end pt-8 pb-4">
+        <button 
+          onClick={() => window.location.href = '/validation'}
+          className="flex items-center gap-2 px-8 py-4 bg-accent-success text-white rounded-xl font-bold text-lg hover:bg-accent-success/90 hover:-translate-y-0.5 transition-all shadow-lg shadow-accent-success/20 active:translate-y-0"
+        >
+          Run Validation Engine (Step 3)
+          <ChevronRight size={24} />
+        </button>
       </div>
     </div>
   );

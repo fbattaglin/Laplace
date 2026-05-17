@@ -3,7 +3,8 @@ import numpy as np
 from typing import Dict, List
 import torch
 from statsforecast import StatsForecast
-from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive
+from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive, AutoARIMA
+from model_registry import registry
 
 def smape(y_true, y_pred):
     return np.mean(2.0 * np.abs(y_pred - y_true) / (np.abs(y_pred) + np.abs(y_true) + 1e-8)) * 100
@@ -19,7 +20,7 @@ def mase(y_true, y_pred, y_train, period):
 def rmse(y_true, y_pred):
     return np.sqrt(np.mean((y_true - y_pred)**2))
 
-def run_backtest(df: pd.DataFrame, date_col: str, target_col: str, h: int = 12):
+def run_backtest(df: pd.DataFrame, date_col: str, target_col: str, h: int = 12, selected_models: List[str] = None):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values(date_col)
@@ -63,56 +64,47 @@ def run_backtest(df: pd.DataFrame, date_col: str, target_col: str, h: int = 12):
             "RMSE": round(m_rmse, 2)
         })
 
-    # Run Classical Models via statsforecast
-    df_sf = pd.DataFrame({'unique_id': '1', 'ds': df[date_col].iloc[:-h], 'y': y_train})
-    sf = StatsForecast(models=[SeasonalNaive(season_length=period), AutoETS(season_length=period), AutoTheta(season_length=period)], freq=freq_str, n_jobs=1)
-    sf.fit(df_sf)
-    sf_preds = sf.predict(h=h)
-    
-    for model_name in ['SeasonalNaive', 'AutoETS', 'AutoTheta']:
-        preds = sf_preds[model_name].values
-        clean_name = model_name.replace('Auto', '')
-        log_result(clean_name, preds)
+    if selected_models is None:
+        selected_models = ['SeasonalNaive', 'AutoETS', 'AutoTheta', 'AutoARIMA', 'Chronos-T5-Small', 'TimesFM-200M']
 
-    # Run Chronos Foundation Models
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
-    chronos_models = {
-        "Chronos-Bolt-Small": "amazon/chronos-bolt-small",
-        "Chronos-Bolt-Base": "amazon/chronos-bolt-base"
-    }
+    # 1. StatsForecast Classical Models
+    classical_models = []
+    if 'SeasonalNaive' in selected_models: classical_models.append(SeasonalNaive(season_length=period))
+    if 'AutoETS' in selected_models: classical_models.append(AutoETS(season_length=period))
+    if 'AutoTheta' in selected_models: classical_models.append(AutoTheta(season_length=period))
+    if 'AutoARIMA' in selected_models: classical_models.append(AutoARIMA(season_length=period))
     
-    for c_name, repo_id in chronos_models.items():
+    if classical_models:
         try:
-            from chronos import ChronosPipeline
-            pipeline = ChronosPipeline.from_pretrained(repo_id, device_map=device, torch_dtype=torch.float32)
-            context_tensor = torch.tensor(y_train)
-            forecast = pipeline.predict(context_tensor, prediction_length=h)
-            samples = forecast[0].numpy()
-            median_pred = np.quantile(samples, 0.5, axis=0)
-            log_result(c_name, median_pred)
-        except Exception as e:
-            print(f"Skipping {c_name} due to error: {e}")
+            df_sf = pd.DataFrame({'unique_id': '1', 'ds': df[date_col].iloc[:-h], 'y': y_train})
+            sf = StatsForecast(models=classical_models, freq=freq_str, n_jobs=1)
+            sf.fit(df_sf)
+            sf_preds = sf.predict(h=h)
             
-    # Run TimesFM
-    try:
-        import timesfm
-        tfm = timesfm.TimesFm(
-            hparams=timesfm.TimesFmHparams(
-                backend="cpu",
-                per_core_batch_size=1,
-                horizon_len=128,
-                context_len=512,
-            ),
-            checkpoint=timesfm.TimesFmCheckpoint(
-                huggingface_repo_id="google/timesfm-1.0-200m-pytorch"
-            )
-        )
-        inputs = [y_train.tolist()]
-        point_forecast, _ = tfm.forecast(inputs, freq=[0])
-        tfm_preds = point_forecast[0][:h]
-        log_result("TimesFM-200M", tfm_preds)
-    except Exception as e:
-        print(f"Skipping TimesFM due to error: {e}")
+            for m in classical_models:
+                m_name = m.__class__.__name__
+                preds = sf_preds[m_name].values
+                clean_name = m_name.replace('Auto', '')
+                if m_name == 'AutoARIMA': clean_name = 'ARIMA'
+                log_result(clean_name, preds)
+        except Exception as e:
+            print(f"StatsForecast error: {e}")
+
+    # 2. Chronos Foundation Models
+    if 'Chronos-T5-Small' in selected_models:
+        try:
+            mean_pred, _, _ = registry.predict_chronos(y_train, h)
+            log_result("Chronos-T5-Small", mean_pred)
+        except Exception as e:
+            print(f"Skipping Chronos-T5-Small due to error: {e}")
+            
+    # 3. TimesFM
+    if 'TimesFM-200M' in selected_models:
+        try:
+            mean_pred, _, _ = registry.predict_timesfm(y_train, h)
+            log_result("TimesFM-200M", mean_pred)
+        except Exception as e:
+            print(f"Skipping TimesFM due to error: {e}")
 
     # Sort results
     metrics.sort(key=lambda x: x["sMAPE"])

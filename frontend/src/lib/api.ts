@@ -1,5 +1,13 @@
 const API_BASE = "http://127.0.0.1:8000/api";
 
+const extractError = (errorData: any, defaultMsg: string): string => {
+  if (errorData && typeof errorData.detail === 'string') {
+    return errorData.detail;
+  } else if (errorData && Array.isArray(errorData.detail)) {
+    return JSON.stringify(errorData.detail);
+  }
+  return defaultMsg;
+};
 export interface DatasetInfo {
   name: string;
   description: string;
@@ -49,6 +57,8 @@ export interface DiagnosticsRequest {
 export interface DiagnosticsResponse {
   dates: string[];
   stats: {
+    start_date: string;
+    end_date: string;
     count: number;
     missing_pct: number;
     zeros_pct: number;
@@ -58,6 +68,11 @@ export interface DiagnosticsResponse {
     max: number;
     skewness: number;
     kurtosis: number;
+  };
+  adf_test: {
+    is_stationary: boolean;
+    p_value: number;
+    test_statistic: number;
   };
   anomalies: number[];
   changepoints: number[];
@@ -93,6 +108,7 @@ export interface ValidationRequest {
   date_col: string;
   target_col: string;
   horizon?: number;
+  selected_models?: string[];
 }
 
 export interface ModelMetrics {
@@ -122,7 +138,10 @@ export async function runValidation(req: ValidationRequest): Promise<ValidationR
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
-  if (!res.ok) throw new Error("Failed to run backtest validation");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(extractError(errorData, "Failed to run backtest validation"));
+  }
   return res.json();
 }
 
@@ -156,6 +175,9 @@ export async function runForecast(req: ForecastRequest): Promise<ForecastRespons
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
-  if (!res.ok) throw new Error("Failed to run forecast");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(extractError(errorData, "Failed to run forecast"));
+  }
   return res.json();
 }

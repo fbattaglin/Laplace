@@ -1,25 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Upload, Database, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Upload, Database, ChevronRight, FileSpreadsheet, CheckCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { fetchDatasets, loadDataset, uploadDataset, type DatasetResponse, type DatasetInfo } from '../lib/api';
 import clsx from 'clsx';
 
 const getBadgeColor = (tag: string) => {
-  const colors: Record<string, string> = {
-    'Economics': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    'Demand': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Retail': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Energy': 'bg-amber-100 text-amber-800 border-amber-200',
-    'High-Noise': 'bg-red-100 text-red-800 border-red-200',
-    'Mean-Reverting': 'bg-rose-100 text-rose-800 border-rose-200',
-    'Random-Walk': 'bg-stone-100 text-stone-800 border-stone-200',
-    'Seasonal': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
-    'Dual-Seasonality': 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
-    'Stable': 'bg-slate-100 text-slate-800 border-slate-200',
-    'Trend': 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    'Intermittent': 'bg-orange-100 text-orange-800 border-orange-200',
-  };
-  return colors[tag] || 'bg-gray-100 text-gray-800 border-gray-200';
+  const t = tag.toLowerCase();
+  if (['economics', 'retail', 'demand'].includes(t)) return 'bg-accent-pulse/10 text-accent-pulse border-accent-pulse/30';
+  if (['seasonal', 'dual-seasonality'].includes(t)) return 'bg-accent-flare/10 text-accent-flare border-accent-flare/30';
+  if (['high-noise', 'random-walk'].includes(t)) return 'bg-accent-alert/10 text-accent-alert border-accent-alert/30';
+  if (['mean-reverting'].includes(t)) return 'bg-accent-warning/10 text-accent-warning border-accent-warning/30';
+  if (['trend', 'stable', 'intermittent'].includes(t)) return 'bg-accent-success/10 text-accent-success border-accent-success/30';
+  return 'bg-base-secondary/10 text-base-secondary border-base-secondary/30';
 };
 
 const LaplaceConsole = () => {
@@ -195,7 +187,10 @@ export default function DataInput() {
                     </div>
                   )}
                 </div>
-                <ChevronRight size={18} className="text-base-secondary group-hover:text-base-primary transition-colors flex-shrink-0 ml-4" />
+                {activeDataset === ds.name 
+                  ? <CheckCircle size={20} className="text-accent-success flex-shrink-0 ml-4" />
+                  : <ChevronRight size={18} className="text-base-secondary group-hover:text-base-primary transition-colors flex-shrink-0 ml-4" />
+                }
               </button>
             ))}
           </div>
@@ -211,16 +206,35 @@ export default function DataInput() {
             Upload your own CSV or Excel file. We will attempt to auto-detect the temporal and target columns.
           </p>
           
-          <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-base-secondary/30 rounded-xl bg-white hover:bg-base-surface/50 transition-colors cursor-pointer group p-8 text-center min-h-[200px]">
+          <label className={clsx("flex-1 flex flex-col items-center justify-center border-2 rounded-xl transition-colors cursor-pointer group p-8 text-center min-h-[200px]", 
+              activeDataset && !datasets.find(d => d.name === activeDataset) 
+              ? "border-accent-success bg-accent-success/5 border-solid" 
+              : "border-dashed border-base-secondary/30 bg-white hover:bg-base-surface/50")}>
             <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} />
-            <div className="w-12 h-12 rounded-full bg-base-surface flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <FileSpreadsheet className="text-base-secondary" size={24} />
-            </div>
-            <div className="font-medium mb-1">Click to browse or drag file here</div>
-            <div className="text-xs text-base-secondary">CSV or XLSX up to 50MB</div>
-            <div className="text-[10px] text-base-secondary mt-4 bg-base-surface px-3 py-1 rounded-full border border-base-secondary/20">
-              Hint: Try our <b>sample_datasets/</b> folder
-            </div>
+            
+            {activeDataset && !datasets.find(d => d.name === activeDataset) ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-accent-success/10 flex items-center justify-center mb-4">
+                  <CheckCircle className="text-accent-success" size={32} />
+                </div>
+                <div className="font-bold text-lg mb-1">{activeDataset}</div>
+                <div className="text-xs text-accent-success font-medium">Successfully Loaded</div>
+                <div className="text-[10px] text-base-secondary mt-4 bg-white px-3 py-1 rounded-full border border-base-secondary/20 hover:border-base-secondary transition-colors">
+                  Click to upload a different file
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-base-surface flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <FileSpreadsheet className="text-base-secondary" size={24} />
+                </div>
+                <div className="font-medium mb-1">Click to browse or drag file here</div>
+                <div className="text-xs text-base-secondary">CSV or XLSX up to 50MB</div>
+                <div className="text-[10px] text-base-secondary mt-4 bg-base-surface px-3 py-1 rounded-full border border-base-secondary/20">
+                  Hint: Try our <b>sample_datasets/</b> folder
+                </div>
+              </>
+            )}
           </label>
         </div>
       </div>
@@ -242,8 +256,18 @@ export default function DataInput() {
 
       {data && !loading && (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+          <div className="mb-6 p-4 bg-accent-success/10 border border-accent-success/20 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="text-accent-success" size={24} />
+              <div>
+                <div className="text-xs text-base-secondary font-medium uppercase tracking-wider">Currently Loaded</div>
+                <div className="text-lg font-bold text-base-primary">{activeDataset}</div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between border-b border-base-secondary/20 pb-4">
-            <h2 className="text-2xl font-semibold tracking-tight">Dataset Preview</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Dataset Preview</h2>
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Date Col:</span>
@@ -332,6 +356,16 @@ export default function DataInput() {
                 </table>
               </div>
             </div>
+          </div>
+          
+          <div className="flex justify-end pt-8 pb-4">
+            <button 
+              onClick={() => window.location.href = '/diagnostics'}
+              className="flex items-center gap-2 px-8 py-4 bg-accent-success text-white rounded-xl font-bold text-lg hover:bg-accent-success/90 hover:-translate-y-0.5 transition-all shadow-lg shadow-accent-success/20 active:translate-y-0"
+            >
+              Proceed to Diagnostics (Step 2)
+              <ChevronRight size={24} />
+            </button>
           </div>
         </div>
       )}

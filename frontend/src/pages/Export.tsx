@@ -81,11 +81,16 @@ export default function Export() {
     document.body.removeChild(link);
   };
 
-  const codeSnippet = `import pandas as pd
+  const buildCodeSnippet = () => {
+    const filename = `Laplace_${data.model}_Forecast.csv`;
+    const intervalLines = includeIntervals
+      ? `\nplt.fill_between(forecast.index, forecast['Lower_80'], forecast['Upper_80'], color='blue', alpha=0.2, label="80% Confidence")`
+      : '';
+    return `import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load the Boardroom-Ready CSV
-df = pd.read_csv('Laplace_${data.model}_Forecast.csv', parse_dates=['Date'])
+df = pd.read_csv('${filename}', parse_dates=['Date'])
 df.set_index('Date', inplace=True)
 
 # Separate History and Forecast
@@ -95,12 +100,14 @@ forecast = df[df['Lower_80'].notna()]
 # Plot the projection
 plt.figure(figsize=(12, 6))
 plt.plot(history.index, history['Forecast'], label='Actual', color='black')
-plt.plot(forecast.index, forecast['Forecast'], label='${data.model} Forecast', color='blue')
-${includeIntervals ? `plt.fill_between(forecast.index, forecast['Lower_80'], forecast['Upper_80'], color='blue', alpha=0.2, label='80% Confidence')` : ''}
+plt.plot(forecast.index, forecast['Forecast'], label='${data.model} Forecast', color='blue')${intervalLines}
 
 plt.title('Laplace Engine: Time Series Projection')
 plt.legend()
+plt.tight_layout()
 plt.show()`;
+  };
+  const codeSnippet = buildCodeSnippet();
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -202,12 +209,14 @@ plt.show()`;
               <p className="text-sm text-base-secondary mb-4">
                 Copy this Python snippet into your Jupyter Notebook to instantly load, parse, and visualize the exported dataset.
               </p>
-              <div className="relative flex-1 bg-[#1E1E1E] rounded-xl border border-gray-800 p-4 overflow-auto">
-                <pre className="text-[13px] leading-relaxed text-[#D4D4D4] font-mono">
-                  <code>
-{codeSnippet}
-                  </code>
-                </pre>
+              <div className="relative flex-1 bg-[#1E1E1E] rounded-xl border border-gray-800 p-4 overflow-auto font-mono text-[13px] leading-relaxed text-[#D4D4D4]">
+                <button
+                  onClick={() => navigator.clipboard.writeText(codeSnippet)}
+                  className="absolute top-3 right-3 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 text-gray-300 rounded transition-colors"
+                >
+                  Copy
+                </button>
+                <pre>{codeSnippet}</pre>
               </div>
             </div>
           </div>

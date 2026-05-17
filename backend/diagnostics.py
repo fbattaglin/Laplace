@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import math
 from statsmodels.tsa.seasonal import STL
-from statsmodels.tsa.stattools import acf, pacf
+from statsmodels.tsa.stattools import acf, pacf, adfuller
 from sklearn.ensemble import IsolationForest
 import ruptures as rpt
 from scipy.stats import skew, kurtosis
@@ -21,6 +21,8 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
     
     # Basic Stats
     stats = {
+        "start_date": str(df.index.min().date()) if hasattr(df.index.min(), 'date') else str(df.index.min()),
+        "end_date": str(df.index.max().date()) if hasattr(df.index.max(), 'date') else str(df.index.max()),
         "count": len(y_raw),
         "missing_pct": float(np.round((y_raw.isna().sum() / len(y_raw)) * 100, 2)),
         "zeros_pct": float(np.round(((y_raw == 0).sum() / len(y_raw)) * 100, 2)),
@@ -131,6 +133,23 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
     except Exception as e:
         print(f"Changepoint detection error: {e}")
 
+    # 5. Stationarity Test (Augmented Dickey-Fuller)
+    try:
+        # We test stationarity on the interpolated series
+        adf_result = adfuller(y.dropna())
+        adf_test = {
+            "test_statistic": float(round(adf_result[0], 3)),
+            "p_value": float(round(adf_result[1], 4)),
+            "is_stationary": bool(adf_result[1] < 0.05)
+        }
+    except Exception as e:
+        print(f"ADF test error: {e}")
+        adf_test = {
+            "test_statistic": 0.0,
+            "p_value": 1.0,
+            "is_stationary": False
+        }
+
     dates = df.index.astype(str).tolist()
 
     return {
@@ -150,6 +169,7 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
             "trend_strength": round(trend_strength, 3),
             "seasonal_strength": round(seasonal_strength, 3)
         },
+        "adf_test": adf_test,
         "acf": acf_vals,
         "pacf": pacf_vals
     }

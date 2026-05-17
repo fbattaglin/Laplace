@@ -43,30 +43,19 @@ Laplace is built on a modern, decoupled stack prioritizing speed and visual exce
 - Python (v3.10+)
 - [uv](https://github.com/astral-sh/uv) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
-### 1. Start the Engine (Backend)
+### Quick Start
+To launch the entire platform (Backend + Frontend) cleanly in a single terminal:
+
 ```bash
-cd backend
-
-# Create virtual environment and install dependencies
-uv venv
-source .venv/bin/activate
-uv pip install -r requirements.txt # (Ensure you have torch, timesfm, chronos-forecasting, scikit-learn, ruptures)
-
-# Run the API
-uvicorn main:app --reload --port 8000
+# In the root of the project
+./start.sh
 ```
-> **Note:** The first time you run a validation, the Foundation Models (~1GB total) will be downloaded and cached locally.
 
-### 2. Start the Interface (Frontend)
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start the dev server
-npm run dev
-```
+The script will automatically:
+1. Kill any stale background processes (uvicorn/vite)
+2. Boot the FastAPI engine
+3. Boot the React interface
+4. Listen for `Ctrl+C` to gracefully shutdown both
 
 The app will be available at `http://localhost:5173`.
 

@@ -18,6 +18,7 @@ export default {
           flare: "#FF6B00",
           warning: "#FFC700",
           alert: "#FF2A3A",
+          success: "#24D366",
         }
       },
       fontFamily: {

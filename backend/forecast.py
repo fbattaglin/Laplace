@@ -2,12 +2,13 @@ import pandas as pd
 import numpy as np
 import torch
 from statsforecast import StatsForecast
-from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive
+from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive, AutoARIMA
+from model_registry import registry
 import os
 
 CHRONOS_MODELS = {
-    "Chronos-Bolt-Small": "amazon/chronos-bolt-small",
-    "Chronos-Bolt-Base": "amazon/chronos-bolt-base"
+    "Chronos-T5-Small": "amazon/chronos-t5-small",
+    "Chronos-Bolt-Small": "amazon/chronos-bolt-small"
 }
 
 def generate_future_dates(last_date: pd.Timestamp, freq_str: str, h: int) -> pd.DatetimeIndex:
@@ -48,55 +49,36 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
     
     if model_name in CHRONOS_MODELS:
         try:
-            from chronos import ChronosPipeline
-            repo_id = CHRONOS_MODELS[model_name]
-            pipeline = ChronosPipeline.from_pretrained(repo_id, device_map=device, torch_dtype=torch.float32)
-            context_tensor = torch.tensor(y)
-            forecast = pipeline.predict(context_tensor, prediction_length=h)
-            
-            samples = forecast[0].numpy()
-            mean_pred = np.quantile(samples, 0.5, axis=0).tolist()
-            lower_pred = np.quantile(samples, 0.1, axis=0).tolist()
-            upper_pred = np.quantile(samples, 0.9, axis=0).tolist()
+            mean_pred, lower_pred, upper_pred = registry.predict_chronos(y, h)
+            mean_pred = mean_pred.tolist()
+            lower_pred = lower_pred.tolist()
+            upper_pred = upper_pred.tolist()
         except Exception as e:
-            print(f"Chronos error: {e}")
-            raise ValueError(f"Chronos generation failed: {e}")
+            import traceback
+            tb = traceback.format_exc()
+            print(f"Chronos error: {tb}")
+            raise ValueError(f"Chronos generation failed: {e}\n{tb}")
             
     elif model_name == "TimesFM-200M":
         try:
-            import timesfm
-            tfm = timesfm.TimesFm(
-                hparams=timesfm.TimesFmHparams(
-                    backend="cpu",
-                    per_core_batch_size=1,
-                    horizon_len=128,
-                    context_len=512,
-                    quantiles=[0.1, 0.5, 0.9]
-                ),
-                checkpoint=timesfm.TimesFmCheckpoint(
-                    huggingface_repo_id="google/timesfm-1.0-200m-pytorch"
-                )
-            )
-            inputs = [y.tolist()]
-            point_forecast, quantiles_forecast = tfm.forecast(inputs, freq=[0])
-            
-            # slice h
-            mean_pred = point_forecast[0][:h].tolist()
-            # timesfm returns 10 quantiles by default, unless overridden.
-            # with our override, index 0 is 0.1, index 1 is 0.5, index 2 is 0.9
-            lower_pred = quantiles_forecast[0][:h, 0].tolist()
-            upper_pred = quantiles_forecast[0][:h, 2].tolist()
+            mean_pred, lower_pred, upper_pred = registry.predict_timesfm(y, h)
+            mean_pred = mean_pred.tolist()
+            lower_pred = lower_pred.tolist()
+            upper_pred = upper_pred.tolist()
             
         except Exception as e:
-            print(f"TimesFM error: {e}")
-            raise ValueError(f"TimesFM generation failed: {e}")
+            import traceback
+            tb = traceback.format_exc()
+            print(f"TimesFM error: {tb}")
+            raise ValueError(f"TimesFM generation failed: {e}\n{tb}")
             
     else:
         # Classical models
         model_map = {
             'SeasonalNaive': SeasonalNaive(season_length=period),
             'ETS': AutoETS(season_length=period),
-            'Theta': AutoTheta(season_length=period)
+            'Theta': AutoTheta(season_length=period),
+            'ARIMA': AutoARIMA(season_length=period)
         }
         
         sf_model = model_map.get(model_name, AutoETS(season_length=period))
@@ -115,6 +97,7 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
         if model_name not in forecasts.columns:
             if model_name == 'ETS': col_prefix = 'AutoETS'
             elif model_name == 'Theta': col_prefix = 'AutoTheta'
+            elif model_name == 'ARIMA': col_prefix = 'AutoARIMA'
         
         mean_pred = forecasts[col_prefix].values.tolist()
         lower_pred = forecasts[f'{col_prefix}-lo-80'].values.tolist()

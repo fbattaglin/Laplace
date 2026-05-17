@@ -130,6 +130,7 @@ class ValidationRequest(BaseModel):
     date_col: str
     target_col: str
     horizon: int = 12
+    selected_models: List[str] = None
 
 from validation import run_backtest
 
@@ -149,7 +150,7 @@ def run_validation(req: ValidationRequest):
         else:
             df = pd.read_excel(file_path)
             
-        return run_backtest(df, req.date_col, req.target_col, req.horizon)
+        return run_backtest(df, req.date_col, req.target_col, req.horizon, req.selected_models)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
