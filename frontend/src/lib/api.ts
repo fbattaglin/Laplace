@@ -20,7 +20,8 @@ export interface DatasetResponse {
   suggested_date_col: string | null;
   suggested_target_col: string | null;
   total_rows: number;
-  preview_data: any[];
+  preview_data: any[];   // first 15 rows for the table
+  chart_data: any[];     // up to 300 evenly-sampled rows for the full-fidelity chart
 }
 
 export async function fetchDatasets() {

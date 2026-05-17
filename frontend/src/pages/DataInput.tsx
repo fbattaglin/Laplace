@@ -291,7 +291,7 @@ export default function DataInput() {
               <div className="w-full h-[300px]">
                 {data.suggested_date_col && data.suggested_target_col ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data.preview_data}>
+                    <LineChart data={data.chart_data}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
                       <XAxis 
                         dataKey={data.suggested_date_col} 

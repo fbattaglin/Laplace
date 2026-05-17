@@ -78,10 +78,22 @@ def process_dataframe(df: pd.DataFrame) -> dict:
     # Fill NA to prevent JSON serialization errors
     df_filled = df.fillna("")
     
+    # Build a full-fidelity chart series (sub-sampled to ≤300 points)
+    # This is shown in the Step 1 preview chart so the user sees the real shape of the data
+    n = len(df)
+    if n <= 300:
+        chart_rows = df_filled.to_dict(orient="records")
+    else:
+        # Evenly sample 300 indices across the full range
+        import numpy as np_h
+        indices = np_h.linspace(0, n - 1, 300, dtype=int)
+        chart_rows = df_filled.iloc[indices].to_dict(orient="records")
+    
     return {
         "columns": columns,
         "suggested_date_col": date_col,
         "suggested_target_col": target_col,
         "total_rows": len(df),
-        "preview_data": df_filled.head(100).to_dict(orient="records")
+        "preview_data": df_filled.head(15).to_dict(orient="records"),
+        "chart_data": chart_rows,
     }
