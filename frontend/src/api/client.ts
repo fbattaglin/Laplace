@@ -5,6 +5,8 @@ import type {
   DiagnosticsResponse,
   ForecastRequest,
   ForecastResponse,
+  PreprocessedResult,
+  PreprocessingConfig,
   TimeSeriesData,
   UploadResponse,
 } from '../types'
@@ -146,6 +148,17 @@ export async function exportCsv(payload: {
 
 export async function fetchRunHistory(): Promise<{ entries: Record<string, string>[] }> {
   return apiFetch('/export/log')
+}
+
+export async function runPreprocessing(params: {
+  values: number[]
+  dates: string[]
+  config: PreprocessingConfig
+}): Promise<PreprocessedResult> {
+  return apiFetch('/preprocessing', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
 }
 
 export async function saveToLog(entry: Record<string, unknown>): Promise<{ status: string }> {

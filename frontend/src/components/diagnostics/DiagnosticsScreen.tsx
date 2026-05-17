@@ -11,10 +11,11 @@ import { DistributionChart } from './DistributionChart'
 import { RollingStatsChart } from './RollingStatsChart'
 import { OutlierHighlight } from './OutlierHighlight'
 import { StationarityPanel } from './StationarityPanel'
+import { DataPrepPanel } from './DataPrepPanel'
 
-type Tab = 'overview' | 'decomposition' | 'distribution' | 'stability'
+type Tab = 'overview' | 'decomposition' | 'distribution' | 'stability' | 'dataPrepLab'
 
-const TABS: { id: Tab; label: string }[] = [
+const BASE_TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'decomposition', label: 'Decomposition' },
   { id: 'distribution', label: 'Distribution & Outliers' },
@@ -26,6 +27,14 @@ export function DiagnosticsScreen() {
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useDiagnostics(timeSeriesData)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+
+  const issueCount = data
+    ? (data.outliers?.n_outliers ?? 0) + (data.stationarity?.is_stationary === false ? 1 : 0)
+    : 0
+
+  const TABS = displayMode === 'lab'
+    ? [...BASE_TABS, { id: 'dataPrepLab' as Tab, label: issueCount > 0 ? `Data Prep (${issueCount})` : 'Data Prep' }]
+    : BASE_TABS
 
   if (!timeSeriesData) {
     return (
@@ -128,6 +137,10 @@ export function DiagnosticsScreen() {
           )}
           {data.stationarity && <StationarityPanel stationarity={data.stationarity} />}
         </div>
+      )}
+
+      {activeTab === 'dataPrepLab' && displayMode === 'lab' && (
+        <DataPrepPanel />
       )}
 
       <div className="flex justify-between items-center pt-4">

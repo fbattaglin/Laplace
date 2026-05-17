@@ -149,6 +149,33 @@ class DiagnosticsResponse(BaseModel):
     stationarity: StationarityResult | None = None
 
 
+class PreprocessingConfig(BaseModel):
+    remove_outliers: bool = False
+    outlier_method: Literal["iqr", "zscore"] = "iqr"
+    outlier_replacement: Literal["interpolate", "winsorize"] = "interpolate"
+    smooth: bool = False
+    smooth_method: Literal["sma", "ema"] = "sma"
+    smooth_window: int | None = None
+    difference: bool = False
+    difference_order: int = 1
+
+
+class PreprocessingStep(BaseModel):
+    operation: str
+    description: str
+    points_affected: int
+
+
+class PreprocessedResult(BaseModel):
+    values: list[float]
+    dates: list[str]
+    original_values: list[float]
+    original_dates: list[str]
+    log: list[PreprocessingStep]
+    n_outliers_removed: int
+    n_points_removed: int
+
+
 class ModelForecast(BaseModel):
     model_name: str
     point_forecast: list[float]

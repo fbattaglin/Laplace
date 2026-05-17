@@ -126,6 +126,33 @@ export interface DiagnosticsResponse {
   stationarity?: StationarityResult
 }
 
+export interface PreprocessingConfig {
+  remove_outliers: boolean
+  outlier_method: 'iqr' | 'zscore'
+  outlier_replacement: 'interpolate' | 'winsorize'
+  smooth: boolean
+  smooth_method: 'sma' | 'ema'
+  smooth_window: number | null
+  difference: boolean
+  difference_order: number
+}
+
+export interface PreprocessingStep {
+  operation: string
+  description: string
+  points_affected: number
+}
+
+export interface PreprocessedResult {
+  values: number[]
+  dates: string[]
+  original_values: number[]
+  original_dates: string[]
+  log: PreprocessingStep[]
+  n_outliers_removed: number
+  n_points_removed: number
+}
+
 export interface ModelForecast {
   model_name: string
   point_forecast: number[]
