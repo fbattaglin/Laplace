@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+.env
+*.egg
+
+# uv
+.python-version
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+backend/.vite/
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Claude Code local settings
+.claude/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+
+# ML models cache
+*.pt
+*.bin
+*.safetensors
+
+# App runtime
+results_log.csv

@@ -1,0 +1,215 @@
+from io import BytesIO
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from laplace.config import settings
+from laplace.models.schemas import (
+    ColumnDetection,
+    DatasetMeta,
+    Frequency,
+    TimeSeriesData,
+    UploadResponse,
+)
+
+PRELOADED_DATASETS: dict[str, dict] = {
+    "airline_passengers": {
+        "file": "airline_passengers.csv",
+        "description": "Monthly totals of international airline passengers (1949-1960)",
+        "frequency": "M",
+    },
+    "sunspots": {
+        "file": "sunspots.csv",
+        "description": "Monthly mean sunspot numbers (1749-1983)",
+        "frequency": "M",
+    },
+    "energy_demand": {
+        "file": "energy_demand.csv",
+        "description": "Hourly energy demand sample (synthetic, 1000 points)",
+        "frequency": "H",
+    },
+}
+
+
+def list_preloaded() -> list[DatasetMeta]:
+    results = []
+    for name, meta in PRELOADED_DATASETS.items():
+        filepath = settings.data_dir / meta["file"]
+        if filepath.exists():
+            df = pd.read_csv(filepath)
+            results.append(
+                DatasetMeta(
+                    name=name,
+                    description=meta["description"],
+                    frequency=meta["frequency"],
+                    n_rows=len(df),
+                    columns=list(df.columns),
+                )
+            )
+    return results
+
+
+def load_preloaded(name: str) -> pd.DataFrame:
+    if name not in PRELOADED_DATASETS:
+        raise ValueError(f"Unknown dataset: {name}")
+    filepath = settings.data_dir / PRELOADED_DATASETS[name]["file"]
+    if not filepath.exists():
+        raise FileNotFoundError(f"Dataset file not found: {filepath}")
+    return pd.read_csv(filepath)
+
+
+def parse_upload(content: bytes, filename: str) -> pd.DataFrame:
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".csv":
+        return pd.read_csv(BytesIO(content))
+    elif suffix in (".xlsx", ".xls"):
+        return pd.read_excel(BytesIO(content), engine="openpyxl")
+    else:
+        raise ValueError(f"Unsupported file format: {suffix}. Use CSV or XLSX.")
+
+
+def _is_datetime_parseable(series: pd.Series, sample_size: int = 50) -> float:
+    sample = series.dropna().head(sample_size).astype(str)
+    if len(sample) == 0:
+        return 0.0
+    try:
+        parsed = pd.to_datetime(sample, errors="coerce")
+        return float(parsed.notna().sum() / len(sample))
+    except Exception:
+        return 0.0
+
+
+def _is_numeric(series: pd.Series) -> bool:
+    return pd.api.types.is_numeric_dtype(series)
+
+
+def detect_columns(df: pd.DataFrame) -> ColumnDetection:
+    datetime_col = None
+    datetime_confidence = 0.0
+
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_col = col
+            datetime_confidence = 1.0
+            break
+        score = _is_datetime_parseable(df[col])
+        if score > datetime_confidence:
+            datetime_confidence = score
+            datetime_col = col
+
+    target_col = None
+    numeric_cols = [c for c in df.columns if _is_numeric(df[c]) and c != datetime_col]
+    if numeric_cols:
+        target_col = numeric_cols[0]
+
+    confidence = min(datetime_confidence, 1.0 if target_col else 0.0)
+    return ColumnDetection(
+        datetime_col=datetime_col,
+        target_col=target_col,
+        confidence=confidence,
+    )
+
+
+def build_upload_response(df: pd.DataFrame, n_preview: int = 20) -> UploadResponse:
+    preview = df.head(n_preview).replace({np.nan: None}).to_dict(orient="records")
+    detection = detect_columns(df)
+    return UploadResponse(
+        columns=list(df.columns),
+        dtypes={col: str(dtype) for col, dtype in df.dtypes.items()},
+        preview_rows=preview,
+        detected=detection,
+        n_rows=len(df),
+    )
+
+
+def _infer_frequency(dt_index: pd.DatetimeIndex) -> Frequency:
+    freq = pd.infer_freq(dt_index)
+    if freq is None:
+        median_diff = dt_index.to_series().diff().median()
+        if median_diff <= pd.Timedelta(hours=2):
+            return "H"
+        elif median_diff <= pd.Timedelta(days=2):
+            return "D"
+        elif median_diff <= pd.Timedelta(weeks=2):
+            return "W"
+        elif median_diff <= pd.Timedelta(days=100):
+            return "M"
+        elif median_diff <= pd.Timedelta(days=200):
+            return "Q"
+        else:
+            return "Y"
+
+    freq_upper = freq.upper()
+    if "H" in freq_upper or "T" in freq_upper:
+        return "H"
+    elif "D" in freq_upper or "B" in freq_upper:
+        return "D"
+    elif "W" in freq_upper:
+        return "W"
+    elif "M" in freq_upper or "MS" in freq_upper:
+        return "M"
+    elif "Q" in freq_upper or "QS" in freq_upper:
+        return "Q"
+    else:
+        return "Y"
+
+
+def validate_and_prepare(
+    df: pd.DataFrame,
+    datetime_col: str,
+    target_col: str,
+    frequency: Frequency | None = None,
+    name: str = "uploaded",
+) -> TimeSeriesData:
+    if datetime_col not in df.columns:
+        raise ValueError(f"Column '{datetime_col}' not found in data")
+    if target_col not in df.columns:
+        raise ValueError(f"Column '{target_col}' not found in data")
+
+    work = df[[datetime_col, target_col]].copy()
+    work[datetime_col] = pd.to_datetime(work[datetime_col], errors="coerce")
+
+    n_invalid_dates = work[datetime_col].isna().sum()
+    if n_invalid_dates > len(work) * 0.1:
+        raise ValueError(
+            f"More than 10% of dates could not be parsed ({n_invalid_dates}/{len(work)} invalid)"
+        )
+
+    work = work.dropna(subset=[datetime_col])
+    work = work.sort_values(datetime_col).reset_index(drop=True)
+
+    work[target_col] = pd.to_numeric(work[target_col], errors="coerce")
+
+    max_consecutive_gap = 3
+    missing_mask = work[target_col].isna()
+    if missing_mask.any():
+        groups = missing_mask.ne(missing_mask.shift()).cumsum()
+        max_gap = missing_mask.groupby(groups).sum().max()
+        if max_gap > max_consecutive_gap:
+            raise ValueError(
+                f"Data has gaps of {int(max_gap)} consecutive missing values "
+                f"(max allowed: {max_consecutive_gap}). Please clean your data first."
+            )
+        work[target_col] = (
+            work[target_col].interpolate(method="linear").bfill().ffill()
+        )
+
+    work = work.dropna(subset=[target_col])
+
+    if len(work) < 10:
+        raise ValueError("Not enough valid data points (minimum 10 required)")
+
+    dt_index = pd.DatetimeIndex(work[datetime_col])
+    detected_freq = frequency or _infer_frequency(dt_index)
+
+    dates = work[datetime_col].dt.strftime("%Y-%m-%dT%H:%M:%S").tolist()
+    values = work[target_col].tolist()
+
+    return TimeSeriesData(
+        dates=dates,
+        values=values,
+        frequency=detected_freq,
+        name=name,
+        n_points=len(values),
+    )
