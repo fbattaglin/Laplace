@@ -76,7 +76,13 @@ export function ValidationScreen() {
         values={timeSeriesData.values}
       />
 
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-between items-center pt-4">
+        <button
+          onClick={() => useAppStore.getState().setStep('diagnostics')}
+          className="px-5 py-2.5 rounded-lg border border-surface text-secondary hover:border-secondary hover:text-primary transition-colors"
+        >
+          ← Back
+        </button>
         <button
           onClick={() => useAppStore.getState().setStep('forecast')}
           className="px-6 py-2.5 bg-accent-blue text-white rounded-lg font-medium hover:bg-accent-blue/90 transition-colors"

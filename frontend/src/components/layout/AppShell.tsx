@@ -1,9 +1,19 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '../../stores/useAppStore'
 import { t } from '../../lib/copy'
 import { StepNav } from './StepNav'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { displayMode, setDisplayMode } = useAppStore()
+  const { displayMode, setDisplayMode, reset } = useAppStore()
+  const queryClient = useQueryClient()
+  const [confirming, setConfirming] = useState(false)
+
+  function handleReset() {
+    queryClient.clear()
+    reset()
+    setConfirming(false)
+  }
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -15,7 +25,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <StepNav />
         </div>
 
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-4 text-sm">
+          {confirming ? (
+            <div className="flex items-center gap-2">
+              <span className="text-secondary text-xs">Reset everything?</span>
+              <button
+                onClick={() => setConfirming(false)}
+                className="px-3 py-1.5 rounded-lg border border-surface text-secondary hover:border-secondary hover:text-primary transition-colors text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-3 py-1.5 rounded-lg bg-accent-red/10 text-accent-red border border-accent-red/20 hover:bg-accent-red/20 transition-colors text-xs font-medium"
+              >
+                Reset
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              className="px-3 py-1.5 rounded-lg border border-surface text-secondary hover:border-secondary hover:text-primary transition-colors text-xs"
+            >
+              New Analysis
+            </button>
+          )}
+
+          <div className="w-px h-4 bg-surface" />
+
           <button
             onClick={() => setDisplayMode('boardroom')}
             className={`px-3 py-1.5 rounded-l-md border transition-colors ${

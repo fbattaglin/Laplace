@@ -202,6 +202,15 @@ export function ExportScreen() {
 
       {/* Run History */}
       <RunHistory />
+
+      <div className="flex justify-start pt-2 pb-4">
+        <button
+          onClick={() => useAppStore.getState().setStep('forecast')}
+          className="px-5 py-2.5 rounded-lg border border-surface text-secondary hover:border-secondary hover:text-primary transition-colors"
+        >
+          ← Back
+        </button>
+      </div>
     </div>
   )
 }

@@ -170,24 +170,30 @@ export function ForecastScreen() {
       )}
 
       {selectedForecast && (
-        <>
-          <ForecastChart
-            historical={timeSeriesData.values}
-            dates={timeSeriesData.dates}
-            forecast={selectedForecast}
-            horizon={result!.horizon}
-          />
-
-          <div className="flex justify-end pt-4">
-            <button
-              onClick={() => setStep('export')}
-              className="px-6 py-2.5 bg-accent-blue text-white rounded-lg font-medium hover:bg-accent-blue/90 transition-colors"
-            >
-              {displayMode === 'boardroom' ? 'Download Results →' : 'Export →'}
-            </button>
-          </div>
-        </>
+        <ForecastChart
+          historical={timeSeriesData.values}
+          dates={timeSeriesData.dates}
+          forecast={selectedForecast}
+          horizon={result!.horizon}
+        />
       )}
+
+      <div className="flex justify-between items-center pt-4">
+        <button
+          onClick={() => setStep('validation')}
+          className="px-5 py-2.5 rounded-lg border border-surface text-secondary hover:border-secondary hover:text-primary transition-colors"
+        >
+          ← Back
+        </button>
+        {selectedForecast && (
+          <button
+            onClick={() => setStep('export')}
+            className="px-6 py-2.5 bg-accent-blue text-white rounded-lg font-medium hover:bg-accent-blue/90 transition-colors"
+          >
+            {displayMode === 'boardroom' ? 'Download Results →' : 'Export →'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
