@@ -1,0 +1,47 @@
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/parser.py:169: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  parsed = pd.to_datetime(sample, errors="coerce")
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/parser.py:169: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  parsed = pd.to_datetime(sample, errors="coerce")
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/parser.py:169: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  parsed = pd.to_datetime(sample, errors="coerce")
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:126: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_pvalue = kpss(arr, regression="c", nlags="auto")[1]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:263: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_stat, kpss_pvalue = kpss(arr, regression="c", nlags="auto")[:2]
+ See https://github.com/google-research/timesfm/blob/master/README.md for updated APIs.
+Loaded PyTorch TimesFM, likely because python version is 3.12.13 (main, Mar 10 2026, 18:18:07) [Clang 21.1.4 ].
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00, 75709.46it/s]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:126: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_pvalue = kpss(arr, regression="c", nlags="auto")[1]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:263: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_stat, kpss_pvalue = kpss(arr, regression="c", nlags="auto")[:2]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/parser.py:169: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  parsed = pd.to_datetime(sample, errors="coerce")
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:126: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_pvalue = kpss(arr, regression="c", nlags="auto")[1]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:263: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_stat, kpss_pvalue = kpss(arr, regression="c", nlags="auto")[:2]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:126: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_pvalue = kpss(arr, regression="c", nlags="auto")[1]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/diagnostics.py:263: InterpolationWarning: The test statistic is outside of the range of p-values available in the
+look-up table. The actual p-value is smaller than the p-value returned.
+
+  kpss_stat, kpss_pvalue = kpss(arr, regression="c", nlags="auto")[:2]
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/parser.py:169: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  parsed = pd.to_datetime(sample, errors="coerce")
+/Users/fabiano/My_Code/Laplace/backend/src/laplace/services/parser.py:169: UserWarning: Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+  parsed = pd.to_datetime(sample, errors="coerce")
