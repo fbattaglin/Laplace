@@ -12,6 +12,7 @@ class DatasetMeta(BaseModel):
     n_rows: int
     columns: list[str]
     domain: str | None = None
+    covariate_cols: list[str] | None = None  # declared covariate columns (None = univariate)
 
 
 class ColumnDetection(BaseModel):

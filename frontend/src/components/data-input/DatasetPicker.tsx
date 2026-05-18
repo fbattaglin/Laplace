@@ -84,9 +84,14 @@ export function DatasetPicker() {
                   )}
                 </div>
                 <p className="text-xs text-secondary mb-2 line-clamp-2">{ds.description}</p>
-                <div className="flex gap-2 text-[11px] text-secondary">
+                <div className="flex gap-2 text-[11px] text-secondary flex-wrap">
                   <span className="bg-canvas px-1.5 py-0.5 rounded">{ds.frequency}</span>
                   <span className="bg-canvas px-1.5 py-0.5 rounded">{ds.n_rows} pts</span>
+                  {displayMode === 'lab' && ds.covariate_cols && ds.covariate_cols.length > 0 && (
+                    <span className="bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded font-medium">
+                      covariates
+                    </span>
+                  )}
                 </div>
               </button>
             ))}

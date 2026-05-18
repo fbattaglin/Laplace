@@ -20,6 +20,7 @@ export interface DatasetMeta {
   n_rows: number
   columns: string[]
   domain?: string
+  covariate_cols?: string[] | null  // declared covariate columns — present for 3 preloaded datasets
 }
 
 export interface ColumnDetection {

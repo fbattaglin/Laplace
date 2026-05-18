@@ -45,6 +45,7 @@ PRELOADED_DATASETS: dict[str, dict] = {
         "description": "Daily energy demand with temperature & humidity covariates (2021-2023)",
         "frequency": "D",
         "domain": "energy",
+        "covariate_cols": ["temperature_c", "humidity_pct"],
     },
     # ── Economics ─────────────────────────────────────────────────────────────
     "us_unemployment": {
@@ -71,6 +72,7 @@ PRELOADED_DATASETS: dict[str, dict] = {
         "description": "Weekly supermarket sales with promo & competitor price covariates",
         "frequency": "W",
         "domain": "retail",
+        "covariate_cols": ["promo_flag", "competitor_price"],
     },
     # ── Transport ─────────────────────────────────────────────────────────────
     "bike_rentals": {
@@ -78,6 +80,7 @@ PRELOADED_DATASETS: dict[str, dict] = {
         "description": "Daily bike rentals with temperature, humidity & wind covariates (2022-2023)",
         "frequency": "D",
         "domain": "transport",
+        "covariate_cols": ["temperature", "humidity", "windspeed"],
     },
     # ── Manufacturing / Industry ──────────────────────────────────────────────
     "aus_beer_production": {
@@ -137,6 +140,7 @@ def list_preloaded() -> list[DatasetMeta]:
                     n_rows=len(df),
                     columns=list(df.columns),
                     domain=meta.get("domain"),
+                    covariate_cols=meta.get("covariate_cols"),
                 )
             )
     return results

@@ -43,6 +43,7 @@ async def get_dataset(name: str):
         target_col=detection.target_col,
         frequency=meta["frequency"],
         name=name,
+        covariate_cols=meta.get("covariate_cols"),
     )
 
 
