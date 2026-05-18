@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBacktest } from '../../hooks/useApi'
 import { useAppStore } from '../../stores/useAppStore'
 import { t } from '../../lib/copy'
 import { MetricsTable } from './MetricsTable'
 import { BacktestChart } from './BacktestChart'
+import { BacktestConfigPanel } from './BacktestConfigPanel'
+import { FoldDetail } from './FoldDetail'
 
 export function ValidationScreen() {
   const { timeSeriesData, displayMode } = useAppStore()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useBacktest(timeSeriesData)
+  const [showFolds, setShowFolds] = useState(false)
 
   if (!timeSeriesData) {
     return (
@@ -68,7 +72,23 @@ export function ValidationScreen() {
         </p>
       </div>
 
+      {displayMode === 'lab' && <BacktestConfigPanel />}
+
       <MetricsTable metrics={data.aggregate_metrics} winner={data.winner} />
+
+      {/* Per-fold detail (Lab-only) */}
+      {displayMode === 'lab' && (
+        <div>
+          <button
+            onClick={() => setShowFolds((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors"
+          >
+            <span className={`transition-transform ${showFolds ? 'rotate-90' : ''}`}>▶</span>
+            {showFolds ? 'Hide' : 'Expand'} per-fold results
+          </button>
+          {showFolds && <FoldDetail folds={data.folds} winner={data.winner} />}
+        </div>
+      )}
 
       <BacktestChart
         backtest={data}

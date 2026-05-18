@@ -10,6 +10,7 @@ export interface TimeSeriesData {
   frequency: Frequency
   name: string
   n_points: number
+  covariates?: Record<string, number[]> | null  // {col_name: [values...]} — Lab only
 }
 
 export interface DatasetMeta {
@@ -199,6 +200,9 @@ export interface ForecastRequest {
   frequency: Frequency
   horizon?: number
   model_name?: string
+  backtest_metrics?: Record<string, Metrics>          // required for Ensemble model
+  covariates?: Record<string, number[]> | null        // historical exogenous values
+  future_covariates?: Record<string, number[]> | null // horizon-length exogenous values
 }
 
 export interface ForecastResponse {

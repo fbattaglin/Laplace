@@ -45,7 +45,12 @@ function Select({
   )
 }
 
-export function DataPrepPanel() {
+interface Props {
+  outlierCount?: number
+  isStationary?: boolean
+}
+
+export function DataPrepPanel({ outlierCount = 0, isStationary = true }: Props) {
   const { displayMode, preprocessedData, timeSeriesData } = useAppStore()
   const { apply, reset } = usePreprocessing()
 
@@ -94,6 +99,23 @@ export function DataPrepPanel() {
 
   return (
     <div className="space-y-5">
+      {/* Detected issues summary — shown before the controls so the user understands what needs fixing */}
+      {(outlierCount > 0 || !isStationary) && !isActive && (
+        <div className="bg-accent-orange/8 border border-accent-orange/20 rounded-xl px-4 py-3 space-y-1">
+          <p className="text-xs font-medium text-accent-orange">Issues detected in your data</p>
+          {outlierCount > 0 && (
+            <p className="text-xs text-secondary">
+              · {outlierCount} outlier{outlierCount > 1 ? 's' : ''} detected — consider removing or winsorizing
+            </p>
+          )}
+          {!isStationary && (
+            <p className="text-xs text-secondary">
+              · Non-stationary series — differencing can stabilize the mean before modeling
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Active badge */}
       {isActive && (
         <div className="flex items-center gap-2 bg-accent-blue/8 border border-accent-blue/20 rounded-xl px-4 py-3">

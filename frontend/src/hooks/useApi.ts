@@ -103,16 +103,27 @@ export function useDiagnostics(data: TimeSeriesData | null) {
 export function useBacktest(data: TimeSeriesData | null) {
   const preprocessingConfig = useAppStore((s) => s.preprocessingConfig)
   const preprocessedData = useAppStore((s) => s.preprocessedData)
+  const backtestConfig = useAppStore((s) => s.backtestConfig)
 
   const activeValues = preprocessedData ? preprocessedData.values : data?.values
   const activeFrequency = data?.frequency
 
   return useQuery({
-    queryKey: ['backtest', data?.name, data?.n_points, preprocessingHash(preprocessedData ? preprocessingConfig : null)],
+    queryKey: [
+      'backtest',
+      data?.name,
+      data?.n_points,
+      preprocessingHash(preprocessedData ? preprocessingConfig : null),
+      backtestConfig.n_splits,
+      backtestConfig.horizon,
+      backtestConfig.metric,
+    ],
     queryFn: () =>
       runBacktest({
         values: activeValues!,
         frequency: activeFrequency!,
+        n_splits: backtestConfig.n_splits,
+        horizon: backtestConfig.horizon ?? undefined,
       }),
     enabled: !!data && !!activeValues,
     staleTime: Infinity,

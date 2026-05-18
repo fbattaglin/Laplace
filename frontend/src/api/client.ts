@@ -74,12 +74,16 @@ export async function confirmUpload(params: {
   datetime_col: string
   target_col: string
   frequency?: string
+  covariate_cols?: string[]
 }): Promise<TimeSeriesData> {
   const formData = new FormData()
   formData.append('file', params.file)
   formData.append('datetime_col', params.datetime_col)
   formData.append('target_col', params.target_col)
   if (params.frequency) formData.append('frequency', params.frequency)
+  if (params.covariate_cols && params.covariate_cols.length > 0) {
+    formData.append('covariate_cols', JSON.stringify(params.covariate_cols))
+  }
 
   const response = await fetch(`${BASE_URL}/datasets/upload/confirm`, {
     method: 'POST',

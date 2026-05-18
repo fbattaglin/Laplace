@@ -11,6 +11,7 @@ from laplace.services.forecasting import (
     run_statsforecast,
     run_timesfm,
 )
+from laplace.services.ensemble import compute_ensemble
 
 router = APIRouter(prefix="/api", tags=["forecast"])
 
@@ -31,11 +32,23 @@ async def forecast(request: ForecastRequest) -> ForecastResponse:
             detail=f"Horizon {horizon} too large for {n} points (max: {max_horizon})",
         )
 
-    if request.model_name:
+    if request.model_name == "Ensemble":
+        # Run all models then combine with inverse-sMAPE weights from backtest
+        all_forecasts = run_all_models(
+            request.values, horizon, request.frequency,
+            request.covariates, request.future_covariates,
+        )
+        if not all_forecasts:
+            raise HTTPException(status_code=500, detail="All models failed")
+        metrics = request.backtest_metrics or {}
+        ensemble = compute_ensemble(all_forecasts, metrics)
+        forecasts = [ensemble]
+
+    elif request.model_name:
         if request.model_name == "Chronos-2":
             forecasts = [run_chronos(request.values, horizon)]
         elif request.model_name == "TimesFM":
-            forecasts = [run_timesfm(request.values, horizon)]
+            forecasts = [run_timesfm(request.values, horizon, request.frequency)]
         else:
             sf_results = run_statsforecast(request.values, horizon, request.frequency)
             forecasts = [r for r in sf_results if r.model_name == request.model_name]
@@ -45,7 +58,10 @@ async def forecast(request: ForecastRequest) -> ForecastResponse:
                     detail=f"Unknown model: {request.model_name}",
                 )
     else:
-        forecasts = run_all_models(request.values, horizon, request.frequency)
+        forecasts = run_all_models(
+            request.values, horizon, request.frequency,
+            request.covariates, request.future_covariates,
+        )
 
     if not forecasts:
         raise HTTPException(status_code=500, detail="All models failed")

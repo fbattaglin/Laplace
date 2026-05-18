@@ -15,12 +15,25 @@ const DEFAULT_PREPROCESSING: PreprocessingConfig = {
   difference_order: 1,
 }
 
+export interface BacktestConfig {
+  n_splits: number
+  horizon: number | null  // null = auto (backend default)
+  metric: 'smape' | 'mae' | 'mase'
+}
+
+const DEFAULT_BACKTEST_CONFIG: BacktestConfig = {
+  n_splits: 5,
+  horizon: null,
+  metric: 'smape',
+}
+
 interface AppState {
   currentStep: Step
   displayMode: DisplayMode
   timeSeriesData: TimeSeriesData | null
   preprocessingConfig: PreprocessingConfig
   preprocessedData: PreprocessedResult | null
+  backtestConfig: BacktestConfig
 
   setStep: (step: Step) => void
   setDisplayMode: (mode: DisplayMode) => void
@@ -28,6 +41,7 @@ interface AppState {
   setPreprocessingConfig: (config: PreprocessingConfig) => void
   setPreprocessedData: (data: PreprocessedResult | null) => void
   resetPreprocessing: () => void
+  setBacktestConfig: (config: BacktestConfig) => void
   reset: () => void
 
   // Returns preprocessed data if available, otherwise raw — used by all downstream steps
@@ -42,6 +56,7 @@ export const useAppStore = create<AppState>()(
       timeSeriesData: null,
       preprocessingConfig: DEFAULT_PREPROCESSING,
       preprocessedData: null,
+      backtestConfig: DEFAULT_BACKTEST_CONFIG,
 
       setStep: (step) => set({ currentStep: step }),
       setDisplayMode: (mode) => set({ displayMode: mode }),
@@ -49,12 +64,14 @@ export const useAppStore = create<AppState>()(
       setPreprocessingConfig: (config) => set({ preprocessingConfig: config }),
       setPreprocessedData: (data) => set({ preprocessedData: data }),
       resetPreprocessing: () => set({ preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING }),
+      setBacktestConfig: (config) => set({ backtestConfig: config }),
 
       reset: () => set({
         currentStep: 'dataInput',
         timeSeriesData: null,
         preprocessedData: null,
         preprocessingConfig: DEFAULT_PREPROCESSING,
+        backtestConfig: DEFAULT_BACKTEST_CONFIG,
       }),
 
       getActiveData: () => {

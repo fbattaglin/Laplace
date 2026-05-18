@@ -187,8 +187,19 @@ def run_statsforecast(
 
 
 def run_all_models(
-    values: list[float], horizon: int, frequency: Frequency
+    values: list[float],
+    horizon: int,
+    frequency: Frequency,
+    covariates: dict[str, list[float]] | None = None,
+    future_covariates: dict[str, list[float]] | None = None,
 ) -> list[ModelForecast]:
+    if covariates:
+        logger.info(
+            "Covariates provided (%s) — current models run univariate; "
+            "exogenous variable support will be added in a future model update.",
+            list(covariates.keys()),
+        )
+
     results = []
 
     try:

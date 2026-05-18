@@ -34,6 +34,7 @@ class DatasetSelection(BaseModel):
     datetime_col: str
     target_col: str
     frequency: Frequency | None = None
+    covariate_cols: list[str] | None = None  # optional exogenous variable columns
 
 
 class TimeSeriesData(BaseModel):
@@ -42,6 +43,7 @@ class TimeSeriesData(BaseModel):
     frequency: Frequency
     name: str
     n_points: int
+    covariates: dict[str, list[float]] | None = None  # {col_name: [values...]}
 
 
 class FrequencyInfo(BaseModel):
@@ -190,6 +192,9 @@ class ForecastRequest(BaseModel):
     frequency: Frequency
     horizon: int | None = None
     model_name: str | None = None
+    backtest_metrics: dict[str, "Metrics"] | None = None  # required for Ensemble
+    covariates: dict[str, list[float]] | None = None       # historical exogenous values
+    future_covariates: dict[str, list[float]] | None = None  # future exogenous values (horizon steps)
 
 
 class ForecastResponse(BaseModel):
@@ -219,6 +224,7 @@ class BacktestRequest(BaseModel):
     frequency: Frequency
     horizon: int | None = None
     n_splits: int = 5
+    covariates: dict[str, list[float]] | None = None  # historical exogenous values
 
 
 class BacktestResponse(BaseModel):

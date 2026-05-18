@@ -9,14 +9,26 @@ async def test_list_datasets(client):
     response = await client.get("/api/datasets")
     assert response.status_code == 200
     datasets = response.json()
-    assert len(datasets) == 10
+    assert len(datasets) == 16, f"Expected 16 datasets, got {len(datasets)}"
     names = {d["name"] for d in datasets}
-    assert names == {
-        "airline_passengers", "sunspots", "energy_demand",
-        "us_retail_sales", "electricity_price_de", "us_unemployment",
-        "aus_beer_production", "daily_temp_melbourne", "hospital_admissions",
-        "web_traffic",
-    }
+    # Original 10
+    assert "airline_passengers" in names
+    assert "sunspots" in names
+    assert "energy_demand" in names
+    assert "us_retail_sales" in names
+    assert "electricity_price_de" in names
+    assert "us_unemployment" in names
+    assert "aus_beer_production" in names
+    assert "daily_temp_melbourne" in names
+    assert "hospital_admissions" in names
+    assert "web_traffic" in names
+    # Phase 4A additions (11-16)
+    assert "bike_rentals" in names
+    assert "supermarket_weekly" in names
+    assert "energy_demand_temp" in names
+    assert "us_cpi" in names
+    assert "gold_price_usd" in names
+    assert "co2_atmospheric" in names
     for d in datasets:
         assert "frequency" in d
         assert "n_rows" in d
@@ -200,3 +212,57 @@ class TestValidateAndPrepare:
         })
         result = validate_and_prepare(df, "date", "value", name="test")
         assert result.frequency == "M"
+
+
+class TestCovariateDatasets:
+    """Tests for Phase 4A covariate datasets (11-13)."""
+
+    def test_bike_rentals_has_covariate_columns(self):
+        from laplace.services.parser import load_preloaded
+        df = load_preloaded("bike_rentals")
+        assert "temperature" in df.columns
+        assert "humidity" in df.columns
+        assert "windspeed" in df.columns
+        assert len(df) == 730
+
+    def test_supermarket_weekly_has_covariate_columns(self):
+        from laplace.services.parser import load_preloaded
+        df = load_preloaded("supermarket_weekly")
+        assert "promo_flag" in df.columns
+        assert "competitor_price" in df.columns
+        assert len(df) == 200
+
+    def test_energy_demand_temp_has_covariate_columns(self):
+        from laplace.services.parser import load_preloaded
+        df = load_preloaded("energy_demand_temp")
+        assert "temperature_c" in df.columns
+        assert "humidity_pct" in df.columns
+        assert len(df) == 1000
+
+    def test_covariate_datasets_have_3_plus_numeric_columns(self):
+        from laplace.services.parser import load_preloaded
+        for name in ("bike_rentals", "supermarket_weekly", "energy_demand_temp"):
+            df = load_preloaded(name)
+            numeric_cols = df.select_dtypes(include="number").columns.tolist()
+            assert len(numeric_cols) >= 3, (
+                f"'{name}' needs ≥3 numeric cols for covariate UI, got: {numeric_cols}"
+            )
+
+    def test_new_univariate_datasets_load_and_parse(self):
+        from laplace.services.parser import load_preloaded, detect_columns, validate_and_prepare, PRELOADED_DATASETS
+        for name in ("us_cpi", "gold_price_usd", "co2_atmospheric"):
+            df = load_preloaded(name)
+            detection = detect_columns(df)
+            meta = PRELOADED_DATASETS[name]
+            result = validate_and_prepare(
+                df, detection.datetime_col, detection.target_col,
+                frequency=meta["frequency"], name=name,
+            )
+            assert result.n_points >= 100, f"'{name}' should have ≥100 points"
+            assert result.covariates is None, f"'{name}' is univariate, should have no covariates"
+
+    def test_new_domains_present(self):
+        from laplace.services.parser import PRELOADED_DATASETS
+        domains = {meta["domain"] for meta in PRELOADED_DATASETS.values()}
+        assert "finance" in domains
+        assert "environment" in domains

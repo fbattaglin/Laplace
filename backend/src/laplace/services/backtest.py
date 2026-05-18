@@ -56,6 +56,7 @@ def rolling_origin_cv(
     frequency: Frequency,
     horizon: int,
     n_splits: int = 5,
+    covariates: dict[str, list[float]] | None = None,
 ) -> BacktestResponse:
     arr = np.array(values, dtype=np.float64)
     n = len(arr)
@@ -86,7 +87,12 @@ def rolling_origin_cv(
         train_values = arr[:train_end].tolist()
         actual = arr[test_start:test_end]
 
-        model_forecasts = run_all_models(train_values, horizon, frequency)
+        # Slice covariates at the same training boundary (no leakage)
+        train_covariates: dict[str, list[float]] | None = None
+        if covariates:
+            train_covariates = {col: vals[:train_end] for col, vals in covariates.items()}
+
+        model_forecasts = run_all_models(train_values, horizon, frequency, train_covariates)
 
         sn_mae = _seasonal_naive_mae(arr[:train_end], period)
 

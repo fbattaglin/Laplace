@@ -14,6 +14,7 @@ from laplace.models.schemas import (
 )
 
 PRELOADED_DATASETS: dict[str, dict] = {
+    # ── Classic / Research ─────────────────────────────────────────────────────
     "airline_passengers": {
         "file": "airline_passengers.csv",
         "description": "Monthly totals of international airline passengers (1949-1960)",
@@ -26,17 +27,12 @@ PRELOADED_DATASETS: dict[str, dict] = {
         "frequency": "M",
         "domain": "science",
     },
+    # ── Energy ────────────────────────────────────────────────────────────────
     "energy_demand": {
         "file": "energy_demand.csv",
         "description": "Hourly energy demand sample (synthetic, 1000 points)",
         "frequency": "H",
         "domain": "energy",
-    },
-    "us_retail_sales": {
-        "file": "us_retail_sales.csv",
-        "description": "Monthly US retail sales in billions USD (2000-2024)",
-        "frequency": "M",
-        "domain": "retail",
     },
     "electricity_price_de": {
         "file": "electricity_price_de.csv",
@@ -44,30 +40,80 @@ PRELOADED_DATASETS: dict[str, dict] = {
         "frequency": "D",
         "domain": "energy",
     },
+    "energy_demand_temp": {
+        "file": "energy_demand_temp.csv",
+        "description": "Daily energy demand with temperature & humidity covariates (2021-2023)",
+        "frequency": "D",
+        "domain": "energy",
+    },
+    # ── Economics ─────────────────────────────────────────────────────────────
     "us_unemployment": {
         "file": "us_unemployment.csv",
         "description": "Monthly US unemployment rate (2005-2024)",
         "frequency": "M",
         "domain": "economics",
     },
+    "us_cpi": {
+        "file": "us_cpi.csv",
+        "description": "Synthetic monthly US CPI tracking observed inflation (1999-2024)",
+        "frequency": "M",
+        "domain": "economics",
+    },
+    # ── Retail / Consumer ─────────────────────────────────────────────────────
+    "us_retail_sales": {
+        "file": "us_retail_sales.csv",
+        "description": "Monthly US retail sales in billions USD (2000-2024)",
+        "frequency": "M",
+        "domain": "retail",
+    },
+    "supermarket_weekly": {
+        "file": "supermarket_weekly.csv",
+        "description": "Weekly supermarket sales with promo & competitor price covariates",
+        "frequency": "W",
+        "domain": "retail",
+    },
+    # ── Transport ─────────────────────────────────────────────────────────────
+    "bike_rentals": {
+        "file": "bike_rentals.csv",
+        "description": "Daily bike rentals with temperature, humidity & wind covariates (2022-2023)",
+        "frequency": "D",
+        "domain": "transport",
+    },
+    # ── Manufacturing / Industry ──────────────────────────────────────────────
     "aus_beer_production": {
         "file": "aus_beer_production.csv",
         "description": "Quarterly Australian beer production in megalitres (1992-2024)",
         "frequency": "Q",
         "domain": "manufacturing",
     },
+    # ── Climate / Environment ─────────────────────────────────────────────────
     "daily_temp_melbourne": {
         "file": "daily_temp_melbourne.csv",
         "description": "Daily minimum temperature in Melbourne, °C (2014-2023)",
         "frequency": "D",
         "domain": "climate",
     },
+    "co2_atmospheric": {
+        "file": "co2_atmospheric.csv",
+        "description": "Synthetic monthly atmospheric CO2 ppm (Mauna Loa-style, 1959-2024)",
+        "frequency": "M",
+        "domain": "environment",
+    },
+    # ── Healthcare ────────────────────────────────────────────────────────────
     "hospital_admissions": {
         "file": "hospital_admissions.csv",
         "description": "Weekly hospital emergency admissions (2019-2024)",
         "frequency": "W",
         "domain": "healthcare",
     },
+    # ── Finance ───────────────────────────────────────────────────────────────
+    "gold_price_usd": {
+        "file": "gold_price_usd.csv",
+        "description": "Synthetic monthly gold price USD/oz tracking historical dynamics (1989-2024)",
+        "frequency": "M",
+        "domain": "finance",
+    },
+    # ── Digital ───────────────────────────────────────────────────────────────
     "web_traffic": {
         "file": "web_traffic.csv",
         "description": "Daily Wikipedia article pageviews (2022-2024)",
@@ -207,13 +253,22 @@ def validate_and_prepare(
     target_col: str,
     frequency: Frequency | None = None,
     name: str = "uploaded",
+    covariate_cols: list[str] | None = None,
 ) -> TimeSeriesData:
     if datetime_col not in df.columns:
         raise ValueError(f"Column '{datetime_col}' not found in data")
     if target_col not in df.columns:
         raise ValueError(f"Column '{target_col}' not found in data")
 
-    work = df[[datetime_col, target_col]].copy()
+    # Resolve valid covariate columns (must exist, not be datetime or target)
+    valid_cov_cols: list[str] = []
+    if covariate_cols:
+        for col in covariate_cols:
+            if col in df.columns and col not in (datetime_col, target_col):
+                valid_cov_cols.append(col)
+
+    cols_to_use = [datetime_col, target_col] + valid_cov_cols
+    work = df[cols_to_use].copy()
     work[datetime_col] = pd.to_datetime(work[datetime_col], errors="coerce")
 
     n_invalid_dates = work[datetime_col].isna().sum()
@@ -226,6 +281,11 @@ def validate_and_prepare(
     work = work.sort_values(datetime_col).reset_index(drop=True)
 
     work[target_col] = pd.to_numeric(work[target_col], errors="coerce")
+
+    # Coerce and interpolate covariates (aligned with the validated date index)
+    for col in valid_cov_cols:
+        work[col] = pd.to_numeric(work[col], errors="coerce")
+        work[col] = work[col].interpolate(method="linear").bfill().ffill()
 
     max_consecutive_gap = 3
     missing_mask = work[target_col].isna()
@@ -252,10 +312,15 @@ def validate_and_prepare(
     dates = work[datetime_col].dt.strftime("%Y-%m-%dT%H:%M:%S").tolist()
     values = work[target_col].tolist()
 
+    covariates: dict[str, list[float]] | None = None
+    if valid_cov_cols:
+        covariates = {col: work[col].tolist() for col in valid_cov_cols}
+
     return TimeSeriesData(
         dates=dates,
         values=values,
         frequency=detected_freq,
         name=name,
         n_points=len(values),
+        covariates=covariates,
     )

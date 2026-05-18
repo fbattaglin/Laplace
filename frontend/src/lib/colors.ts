@@ -26,4 +26,5 @@ export const modelColorMap: Record<string, string> = {
   AutoETS: colors.accent.orange,
   AutoTheta: colors.accent.yellow,
   SeasonalNaive: colors.accent.red,
+  Ensemble: '#8B5CF6',  // purple — synthetic/combined model
 }

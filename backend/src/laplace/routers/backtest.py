@@ -32,6 +32,7 @@ async def backtest(request: BacktestRequest) -> BacktestResponse:
             frequency=request.frequency,
             horizon=horizon,
             n_splits=request.n_splits,
+            covariates=request.covariates,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None

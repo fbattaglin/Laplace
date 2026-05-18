@@ -1,7 +1,6 @@
 import { useState } from 'react'
 
 import { useAppStore } from '../../stores/useAppStore'
-import { t } from '../../lib/copy'
 import type { UploadResponse } from '../../types'
 import { DatasetPicker } from './DatasetPicker'
 import { FileUploader } from './FileUploader'
@@ -17,15 +16,27 @@ export function DataInputScreen() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold text-primary mb-2">
-          {t('steps.dataInput', displayMode)}
-        </h2>
-        <p className="text-secondary">
-          {displayMode === 'boardroom'
-            ? 'Choose a sample dataset or upload your own time series data to get started.'
-            : 'Select a preloaded reference dataset or upload CSV/XLSX. Datetime and target columns are auto-detected.'}
-        </p>
+      {/* Hero / value proposition */}
+      <div className="pb-2">
+        {displayMode === 'boardroom' ? (
+          <>
+            <h2 className="text-2xl font-semibold text-primary mb-1">
+              Understand your data. Find the best forecast.
+            </h2>
+            <p className="text-secondary">
+              Load a dataset and Laplace will analyze its patterns, compare forecasting models, and predict future values — automatically.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-semibold text-primary mb-1">
+              Time Series Analysis & Forecasting
+            </h2>
+            <p className="text-secondary">
+              Rolling-origin backtests · 5 models (Chronos-2, TimesFM, ETS, Theta, SeasonalNaive) · Probabilistic forecasts · Lab preprocessing
+            </p>
+          </>
+        )}
       </div>
 
       <DatasetPicker />

@@ -12,9 +12,19 @@ const DOMAIN_LABELS: Record<string, string> = {
   climate: 'Climate',
   healthcare: 'Healthcare',
   digital: 'Digital',
+  finance: 'Finance',
+  environment: 'Environment',
 }
 
-const DOMAIN_ORDER = ['transport', 'science', 'energy', 'retail', 'economics', 'manufacturing', 'climate', 'healthcare', 'digital']
+const DOMAIN_ORDER = [
+  'transport', 'science', 'energy', 'retail', 'economics',
+  'manufacturing', 'climate', 'environment', 'healthcare', 'finance', 'digital',
+]
+
+const GROUP_SUBTITLES: Record<string, string> = {
+  'Classic Benchmarks': 'Well-studied series used in forecasting research — great for comparing model behavior.',
+  'Real-World Problems': 'Diverse domains with realistic noise, seasonality, and structural patterns.',
+}
 
 function groupByCategory(datasets: DatasetMeta[]): { label: string; items: DatasetMeta[] }[] {
   const classics = datasets.filter((d) => !d.domain || ['transport', 'science'].includes(d.domain))
@@ -38,28 +48,35 @@ export function DatasetPicker() {
   const loadDataset = useLoadDataset()
 
   if (isLoading) {
-    return <div className="text-secondary">Loading datasets...</div>
+    return <div className="text-secondary text-sm">Loading datasets...</div>
   }
 
   const groups = groupByCategory(datasets || [])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {groups.map((group) => (
         <div key={group.label}>
-          <h3 className="text-sm font-medium text-secondary uppercase tracking-wide mb-3">
-            {displayMode === 'boardroom' ? group.label : `Preloaded — ${group.label}`}
-          </h3>
+          <div className="mb-3">
+            <h3 className="text-sm font-medium text-secondary uppercase tracking-wide">
+              {displayMode === 'boardroom' ? group.label : `Preloaded — ${group.label}`}
+            </h3>
+            <p className="text-xs text-secondary/60 mt-0.5">
+              {GROUP_SUBTITLES[group.label]}
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {group.items.map((ds) => (
               <button
                 key={ds.name}
                 onClick={() => loadDataset.mutate(ds.name)}
                 disabled={loadDataset.isPending}
-                className="text-left bg-surface rounded-xl p-4 hover:ring-2 hover:ring-accent-blue/30 transition-all disabled:opacity-50"
+                className="text-left bg-surface rounded-xl p-4 hover:ring-2 hover:ring-accent-blue/30 transition-all disabled:opacity-50 group"
               >
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <p className="font-medium text-primary text-sm">{ds.name.replace(/_/g, ' ')}</p>
+                  <p className="font-medium text-primary text-sm group-hover:text-accent-blue transition-colors">
+                    {ds.name.replace(/_/g, ' ')}
+                  </p>
                   {ds.domain && (
                     <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-secondary bg-canvas px-1.5 py-0.5 rounded">
                       {DOMAIN_LABELS[ds.domain] || ds.domain}
@@ -77,7 +94,7 @@ export function DatasetPicker() {
         </div>
       ))}
       {loadDataset.isError && (
-        <p className="mt-3 text-sm text-accent-red">
+        <p className="text-sm text-accent-red">
           Failed to load dataset: {loadDataset.error.message}
         </p>
       )}

@@ -28,13 +28,9 @@ export function DiagnosticsScreen() {
   const { data, isLoading, error } = useDiagnostics(timeSeriesData)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
-  const issueCount = data
-    ? (data.outliers?.n_outliers ?? 0) + (data.stationarity?.is_stationary === false ? 1 : 0)
-    : 0
-
-  const TABS = displayMode === 'lab'
-    ? [...BASE_TABS, { id: 'dataPrepLab' as Tab, label: issueCount > 0 ? `Data Prep (${issueCount})` : 'Data Prep' }]
-    : BASE_TABS
+  const outlierCount = data?.outliers?.n_outliers ?? 0
+  const isStationary = data?.stationarity?.is_stationary ?? true
+  const issueCount = outlierCount + (!isStationary ? 1 : 0)
 
   if (!timeSeriesData) {
     return (
@@ -87,7 +83,8 @@ export function DiagnosticsScreen() {
 
       {/* Tab navigation */}
       <div className="flex gap-1 bg-canvas rounded-xl p-1">
-        {TABS.map((tab) => (
+        {/* Standard tabs */}
+        {BASE_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -100,6 +97,28 @@ export function DiagnosticsScreen() {
             {tab.label}
           </button>
         ))}
+
+        {/* Lab-only Data Prep tab with visual badge */}
+        {displayMode === 'lab' && (
+          <button
+            onClick={() => setActiveTab('dataPrepLab')}
+            className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-all ${
+              activeTab === 'dataPrepLab'
+                ? 'bg-surface text-primary shadow-sm'
+                : 'text-secondary hover:text-primary'
+            }`}
+          >
+            Data Prep
+            {issueCount > 0 && (
+              <span
+                title={`${outlierCount > 0 ? `${outlierCount} outlier${outlierCount > 1 ? 's' : ''} detected` : ''}${outlierCount > 0 && !isStationary ? ' · ' : ''}${!isStationary ? 'Non-stationary series' : ''}`}
+                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent-orange text-white text-[9px] font-bold"
+              >
+                {issueCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Tab content */}
@@ -140,7 +159,7 @@ export function DiagnosticsScreen() {
       )}
 
       {activeTab === 'dataPrepLab' && displayMode === 'lab' && (
-        <DataPrepPanel />
+        <DataPrepPanel outlierCount={outlierCount} isStationary={isStationary} />
       )}
 
       <div className="flex justify-between items-center pt-4">

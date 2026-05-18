@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
 from laplace.models.schemas import (
@@ -86,6 +88,7 @@ async def confirm_dataset(selection: DatasetSelection):
             target_col=selection.target_col,
             frequency=selection.frequency,
             name=selection.dataset_name,
+            covariate_cols=selection.covariate_cols,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None
@@ -97,6 +100,7 @@ async def confirm_upload(
     datetime_col: str = Form(...),
     target_col: str = Form(...),
     frequency: str | None = Form(default=None),
+    covariate_cols: str | None = Form(default=None),  # JSON array string, e.g. '["temp","humidity"]'
 ):
     if not file.filename:
         raise HTTPException(status_code=422, detail="No filename provided")
@@ -116,6 +120,15 @@ async def confirm_upload(
     name = file.filename.rsplit(".", 1)[0]
     freq = frequency or None
 
+    cov_cols: list[str] | None = None
+    if covariate_cols:
+        try:
+            parsed = json.loads(covariate_cols)
+            if isinstance(parsed, list):
+                cov_cols = [str(c) for c in parsed if c]
+        except (json.JSONDecodeError, TypeError):
+            pass  # ignore malformed covariate_cols
+
     try:
         return validate_and_prepare(
             df=df,
@@ -123,6 +136,7 @@ async def confirm_upload(
             target_col=target_col,
             frequency=freq,
             name=name,
+            covariate_cols=cov_cols,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from None

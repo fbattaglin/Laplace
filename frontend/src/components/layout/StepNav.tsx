@@ -1,6 +1,5 @@
 import { useAppStore } from '../../stores/useAppStore'
 import { t } from '../../lib/copy'
-import { cn } from '../../lib/utils'
 import { STEPS, type Step } from '../../types'
 
 const stepKeys: Record<Step, string> = {
@@ -24,28 +23,58 @@ export function StepNav() {
   }
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center w-full">
       {STEPS.map((step, idx) => {
         const enabled = isEnabled(step)
         const active = step === currentStep
         const completed = idx < currentIndex
 
         return (
-          <button
-            key={step}
-            onClick={() => enabled && setStep(step)}
-            disabled={!enabled}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              active && 'bg-accent-blue text-white',
-              completed && !active && 'bg-surface text-primary',
-              !active && !completed && enabled && 'text-secondary hover:bg-surface',
-              !enabled && 'text-secondary/40 cursor-not-allowed'
+          <div key={step} className="flex items-center flex-1 last:flex-none">
+            {/* Step chip — color covers circle + label together */}
+            <button
+              onClick={() => enabled && setStep(step)}
+              disabled={!enabled}
+              className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-all ${
+                active
+                  ? 'bg-accent-blue text-white shadow-sm shadow-accent-blue/20'
+                  : completed
+                  ? 'bg-accent-blue/10 text-accent-blue hover:bg-accent-blue/15 cursor-pointer'
+                  : enabled
+                  ? 'text-secondary hover:bg-surface cursor-pointer'
+                  : 'text-secondary/30 cursor-not-allowed'
+              }`}
+            >
+              {/* Circle */}
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                  active
+                    ? 'bg-white/25'
+                    : completed
+                    ? 'bg-accent-blue/20'
+                    : enabled
+                    ? 'bg-secondary/10 border border-secondary/15'
+                    : 'bg-secondary/5'
+                }`}
+              >
+                {completed ? '✓' : idx + 1}
+              </div>
+
+              {/* Label */}
+              <span className="text-xs font-medium whitespace-nowrap">
+                {t(stepKeys[step], displayMode)}
+              </span>
+            </button>
+
+            {/* Connecting line */}
+            {idx < STEPS.length - 1 && (
+              <div
+                className={`flex-1 h-px mx-1 rounded-full transition-colors ${
+                  completed ? 'bg-accent-blue/20' : 'bg-secondary/10'
+                }`}
+              />
             )}
-          >
-            <span className="mr-2 text-xs opacity-60">{idx + 1}</span>
-            {t(stepKeys[step], displayMode)}
-          </button>
+          </div>
         )
       })}
     </nav>
