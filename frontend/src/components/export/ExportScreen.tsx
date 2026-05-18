@@ -5,6 +5,7 @@ import { exportCsv, exportXlsx, saveToLog } from '../../api/client'
 import { useAppStore } from '../../stores/useAppStore'
 import { useBacktest, useDiagnostics } from '../../hooks/useApi'
 import { t } from '../../lib/copy'
+import { AnalysisSummary } from './AnalysisSummary'
 import { ReportBuilder } from './ReportBuilder'
 import { RunHistory } from './RunHistory'
 
@@ -119,9 +120,6 @@ export function ExportScreen() {
     )
   }
 
-  const winner = backtestData?.winner || '—'
-  const winnerMetrics = backtestData?.aggregate_metrics[winner]
-
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
@@ -135,23 +133,14 @@ export function ExportScreen() {
         </p>
       </div>
 
-      {/* KPI summary cards */}
-      <div className="bg-surface rounded-xl p-6">
-        <h3 className="font-medium text-primary mb-4">Analysis Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <SummaryCard label="Dataset" value={timeSeriesData.name} />
-          <SummaryCard label="Points" value={`${timeSeriesData.n_points}`} />
-          <SummaryCard label="Frequency" value={timeSeriesData.frequency} />
-          <SummaryCard
-            label="Forecastability"
-            value={diagnosticsData ? `${diagnosticsData.forecastability.total_score.toFixed(0)} / 100` : '—'}
-          />
-          <SummaryCard label="Best Model" value={winner} />
-          <SummaryCard label="sMAPE" value={winnerMetrics ? `${winnerMetrics.smape.toFixed(2)}%` : '—'} />
-          <SummaryCard label="MAE" value={winnerMetrics ? winnerMetrics.mae.toFixed(2) : '—'} />
-          <SummaryCard label="MASE" value={winnerMetrics ? winnerMetrics.mase.toFixed(3) : '—'} />
-        </div>
-      </div>
+      {/* Analysis Summary — verdict banner + metric strip + dimension bars */}
+      <AnalysisSummary
+        timeSeriesData={timeSeriesData}
+        diagnosticsData={diagnosticsData}
+        backtestData={backtestData}
+        forecastResult={forecastResult}
+        displayMode={displayMode}
+      />
 
       {/* Report Builder */}
       <ReportBuilder
@@ -226,11 +215,3 @@ export function ExportScreen() {
   )
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-secondary">{label}</p>
-      <p className="text-sm font-medium text-primary mt-0.5 truncate">{value}</p>
-    </div>
-  )
-}
