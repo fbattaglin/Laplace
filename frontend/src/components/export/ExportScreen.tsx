@@ -11,7 +11,7 @@ import { RunHistory } from './RunHistory'
 const DEFAULT_SECTIONS = new Set(['summary', 'backtest', 'forecast', 'diagnostics', 'raw_data'])
 
 export function ExportScreen() {
-  const { timeSeriesData, displayMode } = useAppStore()
+  const { timeSeriesData, displayMode, forecastResult } = useAppStore()
   const { data: diagnosticsData } = useDiagnostics(timeSeriesData)
   const { data: backtestData } = useBacktest(timeSeriesData)
   const queryClient = useQueryClient()
@@ -45,6 +45,17 @@ export function ExportScreen() {
           n_splits: backtestData.n_splits,
           horizon: backtestData.horizon,
           aggregate_metrics: backtestData.aggregate_metrics,
+        }
+      : null,
+    forecast: forecastResult
+      ? {
+          model_name: forecastResult.forecast.model_name,
+          horizon: forecastResult.horizon,
+          point_forecast: forecastResult.forecast.point_forecast,
+          lo_80: forecastResult.forecast.lo_80,
+          hi_80: forecastResult.forecast.hi_80,
+          lo_90: forecastResult.forecast.lo_90,
+          hi_90: forecastResult.forecast.hi_90,
         }
       : null,
   })

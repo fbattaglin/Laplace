@@ -9,7 +9,7 @@ import { BacktestConfigPanel } from './BacktestConfigPanel'
 import { FoldDetail } from './FoldDetail'
 
 export function ValidationScreen() {
-  const { timeSeriesData, displayMode } = useAppStore()
+  const { timeSeriesData, displayMode, backtestConfig } = useAppStore()
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useBacktest(timeSeriesData)
   const [showFolds, setShowFolds] = useState(false)
@@ -30,7 +30,7 @@ export function ValidationScreen() {
           <p className="text-secondary mt-4">
             {displayMode === 'boardroom'
               ? 'Testing all models on your data...'
-              : 'Running rolling-origin cross-validation (5 models × 5 folds)...'}
+              : `Running rolling-origin cross-validation (5 models × ${backtestConfig.n_splits} folds)...`}
           </p>
           <p className="text-xs text-secondary/60 mt-2">
             This may take a moment on the first run while foundation models load.

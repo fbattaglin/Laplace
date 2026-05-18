@@ -71,7 +71,7 @@ function downloadForecastCsv(
 const ENSEMBLE_MODEL = 'Ensemble'
 
 export function ForecastScreen() {
-  const { timeSeriesData, displayMode, setStep } = useAppStore()
+  const { timeSeriesData, displayMode, setStep, setForecastResult } = useAppStore()
   const { data: backtestData } = useBacktest(timeSeriesData)
 
   const winner = backtestData?.winner || 'Chronos-2'
@@ -112,7 +112,13 @@ export function ForecastScreen() {
         covariates: timeSeriesData!.covariates ?? undefined,
         future_covariates: futureCovariates ?? undefined,
       }),
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => {
+      setResult(data)
+      // Persist to store so ExportScreen can include it in the XLSX/CSV payload
+      if (data.forecasts[0]) {
+        setForecastResult({ forecast: data.forecasts[0], horizon: data.horizon })
+      }
+    },
   })
 
   if (!timeSeriesData) {

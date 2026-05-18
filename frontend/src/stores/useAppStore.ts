@@ -2,7 +2,12 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 import type { DisplayMode } from '../lib/copy'
-import type { PreprocessedResult, PreprocessingConfig, Step, TimeSeriesData } from '../types'
+import type { ModelForecast, PreprocessedResult, PreprocessingConfig, Step, TimeSeriesData } from '../types'
+
+export interface StoredForecast {
+  forecast: ModelForecast
+  horizon: number
+}
 
 const DEFAULT_PREPROCESSING: PreprocessingConfig = {
   remove_outliers: false,
@@ -34,6 +39,7 @@ interface AppState {
   preprocessingConfig: PreprocessingConfig
   preprocessedData: PreprocessedResult | null
   backtestConfig: BacktestConfig
+  forecastResult: StoredForecast | null  // persisted so ExportScreen can include it
 
   setStep: (step: Step) => void
   setDisplayMode: (mode: DisplayMode) => void
@@ -42,6 +48,7 @@ interface AppState {
   setPreprocessedData: (data: PreprocessedResult | null) => void
   resetPreprocessing: () => void
   setBacktestConfig: (config: BacktestConfig) => void
+  setForecastResult: (result: StoredForecast | null) => void
   reset: () => void
 
   // Returns preprocessed data if available, otherwise raw — used by all downstream steps
@@ -57,14 +64,17 @@ export const useAppStore = create<AppState>()(
       preprocessingConfig: DEFAULT_PREPROCESSING,
       preprocessedData: null,
       backtestConfig: DEFAULT_BACKTEST_CONFIG,
+      forecastResult: null,
 
       setStep: (step) => set({ currentStep: step }),
       setDisplayMode: (mode) => set({ displayMode: mode }),
-      setTimeSeriesData: (data) => set({ timeSeriesData: data, preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING }),
+      // Clear forecast result when new data is loaded
+      setTimeSeriesData: (data) => set({ timeSeriesData: data, preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING, forecastResult: null }),
       setPreprocessingConfig: (config) => set({ preprocessingConfig: config }),
       setPreprocessedData: (data) => set({ preprocessedData: data }),
       resetPreprocessing: () => set({ preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING }),
       setBacktestConfig: (config) => set({ backtestConfig: config }),
+      setForecastResult: (result) => set({ forecastResult: result }),
 
       reset: () => set({
         currentStep: 'dataInput',
@@ -72,6 +82,7 @@ export const useAppStore = create<AppState>()(
         preprocessedData: null,
         preprocessingConfig: DEFAULT_PREPROCESSING,
         backtestConfig: DEFAULT_BACKTEST_CONFIG,
+        forecastResult: null,
       }),
 
       getActiveData: () => {
