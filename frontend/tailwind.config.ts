@@ -15,6 +15,7 @@ export default {
           yellow: '#FFC700',
           red: '#FF2A3A',
           teal: '#14B8A6',
+          purple: '#8B5CF6',
         },
       },
       fontFamily: {

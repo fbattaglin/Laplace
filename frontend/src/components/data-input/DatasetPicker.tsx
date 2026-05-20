@@ -3,32 +3,54 @@ import { useAppStore } from '../../stores/useAppStore'
 import type { DatasetMeta } from '../../types'
 
 const DOMAIN_LABELS: Record<string, string> = {
-  transport: 'Transport',
-  science: 'Science',
-  energy: 'Energy',
-  retail: 'Retail',
-  economics: 'Economics',
-  manufacturing: 'Manufacturing',
-  climate: 'Climate',
-  healthcare: 'Healthcare',
-  digital: 'Digital',
-  finance: 'Finance',
-  environment: 'Environment',
+  transport:    'Transport',
+  science:      'Science',
+  energy:       'Energy',
+  retail:       'Retail',
+  economics:    'Economics',
+  manufacturing:'Manufacturing',
+  climate:      'Climate',
+  healthcare:   'Healthcare',
+  digital:      'Digital',
+  finance:      'Finance',
+  environment:  'Environment',
+  hospitality:  'Hospitality',
+  ecommerce:    'E-commerce',
+}
+
+// Color-coded domain tags — makes cards scannable at a glance
+const DOMAIN_COLORS: Record<string, string> = {
+  transport:    'bg-blue-500/10 text-blue-500',
+  science:      'bg-indigo-500/10 text-indigo-400',
+  energy:       'bg-amber-500/10 text-amber-600',
+  retail:       'bg-teal-500/10 text-teal-600',
+  economics:    'bg-emerald-500/10 text-emerald-600',
+  manufacturing:'bg-orange-500/10 text-orange-500',
+  climate:      'bg-sky-500/10 text-sky-500',
+  environment:  'bg-green-600/10 text-green-600',
+  healthcare:   'bg-pink-500/10 text-pink-500',
+  finance:      'bg-yellow-500/10 text-yellow-600',
+  digital:      'bg-violet-500/10 text-violet-500',
+  hospitality:  'bg-rose-500/10 text-rose-500',
+  ecommerce:    'bg-cyan-500/10 text-cyan-600',
 }
 
 const DOMAIN_ORDER = [
-  'transport', 'science', 'energy', 'retail', 'economics',
-  'manufacturing', 'climate', 'environment', 'healthcare', 'finance', 'digital',
+  'transport', 'energy', 'retail', 'economics', 'manufacturing',
+  'climate', 'environment', 'healthcare', 'finance', 'digital', 'hospitality', 'ecommerce',
 ]
 
+// airline_passengers is the one canonical research classic; everything else is real-world
+const CLASSIC_DATASET_NAMES = new Set(['airline_passengers'])
+
 const GROUP_SUBTITLES: Record<string, string> = {
-  'Classic Benchmarks': 'Well-studied series used in forecasting research — great for comparing model behavior.',
+  'Classic Benchmark': 'The canonical forecasting benchmark — ideal for calibrating model expectations.',
   'Real-World Problems': 'Diverse domains with realistic noise, seasonality, and structural patterns.',
 }
 
 function groupByCategory(datasets: DatasetMeta[]): { label: string; items: DatasetMeta[] }[] {
-  const classics = datasets.filter((d) => !d.domain || ['transport', 'science'].includes(d.domain))
-  const realWorld = datasets.filter((d) => d.domain && !['transport', 'science'].includes(d.domain))
+  const classics = datasets.filter((d) => CLASSIC_DATASET_NAMES.has(d.name))
+  const realWorld = datasets.filter((d) => !CLASSIC_DATASET_NAMES.has(d.name))
 
   realWorld.sort((a, b) => {
     const ai = DOMAIN_ORDER.indexOf(a.domain || '')
@@ -37,7 +59,7 @@ function groupByCategory(datasets: DatasetMeta[]): { label: string; items: Datas
   })
 
   const groups: { label: string; items: DatasetMeta[] }[] = []
-  if (classics.length > 0) groups.push({ label: 'Classic Benchmarks', items: classics })
+  if (classics.length > 0) groups.push({ label: 'Classic Benchmark', items: classics })
   if (realWorld.length > 0) groups.push({ label: 'Real-World Problems', items: realWorld })
   return groups
 }
@@ -78,7 +100,7 @@ export function DatasetPicker() {
                     {ds.name.replace(/_/g, ' ')}
                   </p>
                   {ds.domain && (
-                    <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-secondary bg-canvas px-1.5 py-0.5 rounded">
+                    <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${DOMAIN_COLORS[ds.domain] || 'bg-canvas text-secondary'}`}>
                       {DOMAIN_LABELS[ds.domain] || ds.domain}
                     </span>
                   )}

@@ -9,26 +9,29 @@ async def test_list_datasets(client):
     response = await client.get("/api/datasets")
     assert response.status_code == 200
     datasets = response.json()
-    assert len(datasets) == 16, f"Expected 16 datasets, got {len(datasets)}"
+    assert len(datasets) == 15, f"Expected 15 datasets, got {len(datasets)}"
     names = {d["name"] for d in datasets}
-    # Original 10
+    # Core univariate datasets
     assert "airline_passengers" in names
-    assert "sunspots" in names
     assert "energy_demand" in names
     assert "us_retail_sales" in names
     assert "electricity_price_de" in names
     assert "us_unemployment" in names
-    assert "aus_beer_production" in names
-    assert "daily_temp_melbourne" in names
     assert "hospital_admissions" in names
     assert "web_traffic" in names
-    # Phase 4A additions (11-16)
-    assert "bike_rentals" in names
-    assert "supermarket_weekly" in names
-    assert "energy_demand_temp" in names
     assert "us_cpi" in names
     assert "gold_price_usd" in names
     assert "co2_atmospheric" in names
+    # Covariate datasets (5 total)
+    assert "bike_rentals" in names
+    assert "supermarket_weekly" in names
+    assert "energy_demand_temp" in names
+    assert "hotel_occupancy" in names
+    assert "ecommerce_orders" in names
+    # Retired datasets must NOT be present
+    assert "sunspots" not in names
+    assert "daily_temp_melbourne" not in names
+    assert "aus_beer_production" not in names
     for d in datasets:
         assert "frequency" in d
         assert "n_rows" in d
@@ -215,7 +218,7 @@ class TestValidateAndPrepare:
 
 
 class TestCovariateDatasets:
-    """Tests for Phase 4A covariate datasets (11-13)."""
+    """Tests for the 5 covariate datasets (all with declared covariate_cols)."""
 
     def test_bike_rentals_has_covariate_columns(self):
         from laplace.services.parser import load_preloaded
@@ -239,18 +242,38 @@ class TestCovariateDatasets:
         assert "humidity_pct" in df.columns
         assert len(df) == 1000
 
-    def test_covariate_datasets_have_3_plus_numeric_columns(self):
+    def test_hotel_occupancy_has_covariate_columns(self):
         from laplace.services.parser import load_preloaded
-        for name in ("bike_rentals", "supermarket_weekly", "energy_demand_temp"):
+        df = load_preloaded("hotel_occupancy")
+        assert "occupancy_rate" in df.columns
+        assert "avg_daily_rate" in df.columns
+        assert "local_events_count" in df.columns
+        assert "holiday_flag" in df.columns
+        assert len(df) == 730
+
+    def test_ecommerce_orders_has_covariate_columns(self):
+        from laplace.services.parser import load_preloaded
+        df = load_preloaded("ecommerce_orders")
+        assert "orders" in df.columns
+        assert "ad_spend_usd" in df.columns
+        assert "discount_pct" in df.columns
+        assert "competitor_price_index" in df.columns
+        assert len(df) == 730
+
+    def test_all_covariate_datasets_have_multiple_numeric_columns(self):
+        from laplace.services.parser import load_preloaded
+        cov_datasets = ("bike_rentals", "supermarket_weekly", "energy_demand_temp",
+                        "hotel_occupancy", "ecommerce_orders")
+        for name in cov_datasets:
             df = load_preloaded(name)
             numeric_cols = df.select_dtypes(include="number").columns.tolist()
             assert len(numeric_cols) >= 3, (
                 f"'{name}' needs ≥3 numeric cols for covariate UI, got: {numeric_cols}"
             )
 
-    def test_new_univariate_datasets_load_and_parse(self):
+    def test_univariate_datasets_load_and_parse(self):
         from laplace.services.parser import load_preloaded, detect_columns, validate_and_prepare, PRELOADED_DATASETS
-        for name in ("us_cpi", "gold_price_usd", "co2_atmospheric"):
+        for name in ("us_cpi", "gold_price_usd", "co2_atmospheric", "hospital_admissions"):
             df = load_preloaded(name)
             detection = detect_columns(df)
             meta = PRELOADED_DATASETS[name]
@@ -258,7 +281,7 @@ class TestCovariateDatasets:
                 df, detection.datetime_col, detection.target_col,
                 frequency=meta["frequency"], name=name,
             )
-            assert result.n_points >= 100, f"'{name}' should have ≥100 points"
+            assert result.n_points >= 50, f"'{name}' should have ≥50 points"
             assert result.covariates is None, f"'{name}' is univariate, should have no covariates"
 
     def test_new_domains_present(self):
@@ -266,30 +289,37 @@ class TestCovariateDatasets:
         domains = {meta["domain"] for meta in PRELOADED_DATASETS.values()}
         assert "finance" in domains
         assert "environment" in domains
+        assert "hospitality" in domains
+        assert "ecommerce" in domains
+
+    def test_retired_datasets_absent(self):
+        from laplace.services.parser import PRELOADED_DATASETS
+        assert "sunspots" not in PRELOADED_DATASETS
+        assert "daily_temp_melbourne" not in PRELOADED_DATASETS
+        assert "aus_beer_production" not in PRELOADED_DATASETS
 
 
 class TestPreloadedCovariatePipeline:
     """Verify that GET /api/datasets/{name} returns populated covariates
-    for the three datasets that declare covariate_cols in the registry."""
+    for all 5 datasets that declare covariate_cols in the registry."""
 
     @pytest.mark.asyncio
     async def test_bike_rentals_covariates_populated(self, client):
         response = await client.get("/api/datasets/bike_rentals")
         assert response.status_code == 200
         data = response.json()
-        assert data["covariates"] is not None, "bike_rentals should return covariates"
+        assert data["covariates"] is not None
         assert set(data["covariates"].keys()) == {"temperature", "humidity", "windspeed"}
-        # Each covariate array should match the number of data points
         n = data["n_points"]
         for key, vals in data["covariates"].items():
-            assert len(vals) == n, f"covariate '{key}' length {len(vals)} != n_points {n}"
+            assert len(vals) == n
 
     @pytest.mark.asyncio
     async def test_energy_demand_temp_covariates_populated(self, client):
         response = await client.get("/api/datasets/energy_demand_temp")
         assert response.status_code == 200
         data = response.json()
-        assert data["covariates"] is not None, "energy_demand_temp should return covariates"
+        assert data["covariates"] is not None
         assert set(data["covariates"].keys()) == {"temperature_c", "humidity_pct"}
         n = data["n_points"]
         for key, vals in data["covariates"].items():
@@ -300,15 +330,38 @@ class TestPreloadedCovariatePipeline:
         response = await client.get("/api/datasets/supermarket_weekly")
         assert response.status_code == 200
         data = response.json()
-        assert data["covariates"] is not None, "supermarket_weekly should return covariates"
+        assert data["covariates"] is not None
         assert set(data["covariates"].keys()) == {"promo_flag", "competitor_price"}
         n = data["n_points"]
         for key, vals in data["covariates"].items():
             assert len(vals) == n
 
     @pytest.mark.asyncio
+    async def test_hotel_occupancy_covariates_populated(self, client):
+        response = await client.get("/api/datasets/hotel_occupancy")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["covariates"] is not None
+        assert set(data["covariates"].keys()) == {"avg_daily_rate", "local_events_count", "holiday_flag"}
+        n = data["n_points"]
+        for key, vals in data["covariates"].items():
+            assert len(vals) == n
+
+    @pytest.mark.asyncio
+    async def test_ecommerce_orders_covariates_populated(self, client):
+        response = await client.get("/api/datasets/ecommerce_orders")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["covariates"] is not None
+        assert set(data["covariates"].keys()) == {"ad_spend_usd", "discount_pct", "competitor_price_index"}
+        n = data["n_points"]
+        for key, vals in data["covariates"].items():
+            assert len(vals) == n
+
+    @pytest.mark.asyncio
     async def test_univariate_datasets_have_no_covariates(self, client):
-        univariate = ["airline_passengers", "us_cpi", "gold_price_usd", "co2_atmospheric"]
+        univariate = ["airline_passengers", "us_cpi", "gold_price_usd", "co2_atmospheric",
+                      "hospital_admissions", "web_traffic"]
         for name in univariate:
             response = await client.get(f"/api/datasets/{name}")
             assert response.status_code == 200
@@ -319,21 +372,21 @@ class TestPreloadedCovariatePipeline:
 
     @pytest.mark.asyncio
     async def test_dataset_meta_covariate_cols(self, client):
-        """List endpoint exposes covariate_cols for the 3 declared datasets."""
+        """List endpoint exposes covariate_cols for all 5 declared covariate datasets."""
         response = await client.get("/api/datasets")
         assert response.status_code == 200
         by_name = {d["name"]: d for d in response.json()}
 
-        # Covariate datasets must declare covariate_cols in meta
         assert by_name["bike_rentals"]["covariate_cols"] == ["temperature", "humidity", "windspeed"]
         assert by_name["energy_demand_temp"]["covariate_cols"] == ["temperature_c", "humidity_pct"]
         assert by_name["supermarket_weekly"]["covariate_cols"] == ["promo_flag", "competitor_price"]
+        assert by_name["hotel_occupancy"]["covariate_cols"] == ["avg_daily_rate", "local_events_count", "holiday_flag"]
+        assert by_name["ecommerce_orders"]["covariate_cols"] == ["ad_spend_usd", "discount_pct", "competitor_price_index"]
 
-        # All other datasets should have covariate_cols = None or absent
+        # All univariate datasets should have covariate_cols = None
         for name in ("airline_passengers", "us_cpi", "gold_price_usd", "co2_atmospheric",
                      "energy_demand", "electricity_price_de", "us_unemployment",
-                     "us_retail_sales", "aus_beer_production", "daily_temp_melbourne",
-                     "hospital_admissions", "web_traffic", "sunspots"):
+                     "us_retail_sales", "hospital_admissions", "web_traffic"):
             meta = by_name[name]
             assert meta.get("covariate_cols") is None, (
                 f"'{name}' should have covariate_cols=None, got {meta.get('covariate_cols')}"

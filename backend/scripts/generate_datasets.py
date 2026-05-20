@@ -1,5 +1,5 @@
 """
-Generate 6 new preloaded datasets (datasets 11-16) and 5 sample_datasets/ test files.
+Generate preloaded datasets and sample_datasets/ test files.
 
 All datasets use fixed numpy seeds for full reproducibility.
 Run from the repo root:
@@ -189,6 +189,116 @@ def gen_co2_atmospheric():
     print(f"✓ co2_atmospheric.csv ({len(df)} rows)")
 
 
+def gen_hotel_occupancy():
+    """Daily hotel occupancy with covariates: avg_daily_rate, local_events_count, holiday_flag (730 days)."""
+    rng = np.random.default_rng(707)
+    n = 730
+    dates = pd.date_range("2022-01-01", periods=n, freq="D")
+
+    day_of_year = np.arange(n) % 365
+    weekday = np.array([d.weekday() for d in dates])
+
+    # Base occupancy: seasonal (summer peak, Christmas peak)
+    season = 15 * np.sin((day_of_year - 80) * 2 * np.pi / 365)
+    weekend_boost = np.where(weekday >= 4, 12.0, 0.0)  # Fri/Sat
+
+    # Holiday windows: Christmas (late Dec), July 4th, Thanksgiving
+    holiday_flag = np.zeros(n, dtype=int)
+    for hday in [185, 185 + 365, 326, 326 + 365, 355, 355 + 365]:
+        if hday < n:
+            holiday_flag[max(0, hday - 3):min(n, hday + 5)] = 1
+
+    # Local events: ~40 event-heavy days spread across 2 years
+    local_events_count = np.zeros(n, dtype=int)
+    event_days = rng.choice(n, size=40, replace=False)
+    local_events_count[event_days] = rng.integers(1, 6, size=40)
+    event_boost = local_events_count * 5.0
+
+    # Average daily rate: base $149, higher on weekends, events, summer
+    avg_daily_rate = (
+        149.0
+        + 20 * np.sin((day_of_year - 60) * 2 * np.pi / 365)
+        + weekend_boost * 0.8
+        + local_events_count * 5
+        + rng.standard_normal(n) * 8
+    )
+    avg_daily_rate = np.maximum(avg_daily_rate, 79)
+
+    # Occupancy rate 10–99%
+    occupancy_rate = np.clip(
+        62 + season + weekend_boost + holiday_flag * 18 + event_boost + rng.standard_normal(n) * 4,
+        10, 99,
+    )
+
+    df = pd.DataFrame({
+        "date": dates.strftime("%Y-%m-%d"),
+        "occupancy_rate": np.round(occupancy_rate, 1),
+        "avg_daily_rate": np.round(avg_daily_rate, 2),
+        "local_events_count": local_events_count,
+        "holiday_flag": holiday_flag,
+    })
+    df.to_csv(PRELOADED_DIR / "hotel_occupancy.csv", index=False)
+    print(f"✓ hotel_occupancy.csv ({len(df)} rows, covariates: avg_daily_rate, local_events_count, holiday_flag)")
+
+
+def gen_ecommerce_orders():
+    """Daily e-commerce orders with covariates: ad_spend_usd, discount_pct, competitor_price_index (730 days)."""
+    rng = np.random.default_rng(808)
+    n = 730
+    dates = pd.date_range("2022-01-01", periods=n, freq="D")
+
+    day_of_year = np.arange(n) % 365
+    weekday = np.array([d.weekday() for d in dates])
+
+    # Ad spend: cycles around $2 000/day with monthly promotional bursts
+    ad_spend = np.maximum(
+        2000 + 500 * np.sin(day_of_year * 2 * np.pi / 30) + rng.standard_normal(n) * 300,
+        200,
+    )
+
+    # Discount: 5–30%, spikes at holiday season
+    discount_pct = np.clip(8 + rng.standard_normal(n) * 3, 0, 40)
+    for d in [355, 356, 357, 358, 359]:
+        if d < n:
+            discount_pct[d] = rng.uniform(20, 35)
+    if n > 365:
+        for d in [720, 721, 722, 723, 724]:
+            if d < n:
+                discount_pct[d] = rng.uniform(20, 35)
+
+    # Competitor price index: >1 means competitor is more expensive (good for us)
+    competitor_price_index = np.clip(
+        1.0 + 0.15 * np.sin(day_of_year * 2 * np.pi / 90) + rng.standard_normal(n) * 0.05,
+        0.7, 1.4,
+    )
+
+    # Orders driven by ad spend, discounts, competitor pricing, day-of-week
+    weekend_factor = np.where(weekday < 5, 1.0, 1.25)
+    orders = (
+        300
+        + 0.08 * ad_spend
+        + 5 * discount_pct
+        + 120 * (competitor_price_index - 1.0)
+        + rng.standard_normal(n) * 40
+    ) * weekend_factor
+
+    # Holiday season spikes
+    orders[340:366] *= 1.4
+    if n > 365:
+        orders[705:] *= 1.35
+    orders = np.maximum(orders, 20).round().astype(int)
+
+    df = pd.DataFrame({
+        "date": dates.strftime("%Y-%m-%d"),
+        "orders": orders,
+        "ad_spend_usd": np.round(ad_spend, 2),
+        "discount_pct": np.round(discount_pct, 1),
+        "competitor_price_index": np.round(competitor_price_index, 3),
+    })
+    df.to_csv(PRELOADED_DIR / "ecommerce_orders.csv", index=False)
+    print(f"✓ ecommerce_orders.csv ({len(df)} rows, covariates: ad_spend_usd, discount_pct, competitor_price_index)")
+
+
 # ─── sample_datasets/ generators ──────────────────────────────────────────────
 
 def gen_sample_bike_rentals():
@@ -305,13 +415,15 @@ def gen_sample_single_noisy():
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("\n── Generating preloaded datasets (11-16) ──")
+    print("\n── Generating preloaded datasets ──")
     gen_bike_rentals()
     gen_supermarket_weekly()
     gen_energy_demand_temp()
     gen_us_cpi()
     gen_gold_price()
     gen_co2_atmospheric()
+    gen_hotel_occupancy()
+    gen_ecommerce_orders()
 
     print("\n── Generating sample_datasets/ ──")
     gen_sample_bike_rentals()

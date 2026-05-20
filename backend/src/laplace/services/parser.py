@@ -14,35 +14,29 @@ from laplace.models.schemas import (
 )
 
 PRELOADED_DATASETS: dict[str, dict] = {
-    # ── Classic / Research ─────────────────────────────────────────────────────
+    # ── Classic Benchmark ─────────────────────────────────────────────────────
     "airline_passengers": {
         "file": "airline_passengers.csv",
-        "description": "Monthly totals of international airline passengers (1949-1960)",
+        "description": "Monthly international airline passengers (1949–1960) — the canonical forecasting benchmark",
         "frequency": "M",
         "domain": "transport",
-    },
-    "sunspots": {
-        "file": "sunspots.csv",
-        "description": "Monthly mean sunspot numbers (1749-1983)",
-        "frequency": "M",
-        "domain": "science",
     },
     # ── Energy ────────────────────────────────────────────────────────────────
     "energy_demand": {
         "file": "energy_demand.csv",
-        "description": "Hourly energy demand sample (synthetic, 1000 points)",
+        "description": "Hourly grid energy demand — captures intraday and weekly load patterns",
         "frequency": "H",
         "domain": "energy",
     },
     "electricity_price_de": {
         "file": "electricity_price_de.csv",
-        "description": "Daily German electricity spot price EUR/MWh (2021-2023)",
+        "description": "Daily German electricity spot price EUR/MWh — volatile, regime-switching series",
         "frequency": "D",
         "domain": "energy",
     },
     "energy_demand_temp": {
         "file": "energy_demand_temp.csv",
-        "description": "Daily energy demand with temperature & humidity covariates (2021-2023)",
+        "description": "Daily energy demand with temperature & humidity — exogenous weather as demand drivers",
         "frequency": "D",
         "domain": "energy",
         "covariate_cols": ["temperature_c", "humidity_pct"],
@@ -50,26 +44,26 @@ PRELOADED_DATASETS: dict[str, dict] = {
     # ── Economics ─────────────────────────────────────────────────────────────
     "us_unemployment": {
         "file": "us_unemployment.csv",
-        "description": "Monthly US unemployment rate (2005-2024)",
+        "description": "Monthly US unemployment rate (2005–2024) — macro indicator with structural breaks",
         "frequency": "M",
         "domain": "economics",
     },
     "us_cpi": {
         "file": "us_cpi.csv",
-        "description": "Synthetic monthly US CPI tracking observed inflation (1999-2024)",
+        "description": "Monthly US Consumer Price Index (1999–2024) — trending series with an inflation shock",
         "frequency": "M",
         "domain": "economics",
     },
     # ── Retail / Consumer ─────────────────────────────────────────────────────
     "us_retail_sales": {
         "file": "us_retail_sales.csv",
-        "description": "Monthly US retail sales in billions USD (2000-2024)",
+        "description": "Monthly US retail sales in billions USD (2000–2024) — trend + seasonality + COVID shock",
         "frequency": "M",
         "domain": "retail",
     },
     "supermarket_weekly": {
         "file": "supermarket_weekly.csv",
-        "description": "Weekly supermarket sales with promo & competitor price covariates",
+        "description": "Weekly supermarket sales with promotional flag & competitor pricing",
         "frequency": "W",
         "domain": "retail",
         "covariate_cols": ["promo_flag", "competitor_price"],
@@ -77,51 +71,54 @@ PRELOADED_DATASETS: dict[str, dict] = {
     # ── Transport ─────────────────────────────────────────────────────────────
     "bike_rentals": {
         "file": "bike_rentals.csv",
-        "description": "Daily bike rentals with temperature, humidity & wind covariates (2022-2023)",
+        "description": "Daily bike rentals with weather covariates — temperature, humidity, wind (2022–2023)",
         "frequency": "D",
         "domain": "transport",
         "covariate_cols": ["temperature", "humidity", "windspeed"],
     },
-    # ── Manufacturing / Industry ──────────────────────────────────────────────
-    "aus_beer_production": {
-        "file": "aus_beer_production.csv",
-        "description": "Quarterly Australian beer production in megalitres (1992-2024)",
-        "frequency": "Q",
-        "domain": "manufacturing",
-    },
-    # ── Climate / Environment ─────────────────────────────────────────────────
-    "daily_temp_melbourne": {
-        "file": "daily_temp_melbourne.csv",
-        "description": "Daily minimum temperature in Melbourne, °C (2014-2023)",
-        "frequency": "D",
-        "domain": "climate",
-    },
+    # ── Environment ───────────────────────────────────────────────────────────
     "co2_atmospheric": {
         "file": "co2_atmospheric.csv",
-        "description": "Synthetic monthly atmospheric CO2 ppm (Mauna Loa-style, 1959-2024)",
+        "description": "Monthly atmospheric CO2 ppm (Mauna Loa-style, 1959–2024) — strong trend + annual cycle",
         "frequency": "M",
         "domain": "environment",
     },
     # ── Healthcare ────────────────────────────────────────────────────────────
     "hospital_admissions": {
         "file": "hospital_admissions.csv",
-        "description": "Weekly hospital emergency admissions (2019-2024)",
+        "description": "Weekly hospital emergency admissions (2019–2024) — operational planning series",
         "frequency": "W",
         "domain": "healthcare",
     },
     # ── Finance ───────────────────────────────────────────────────────────────
     "gold_price_usd": {
         "file": "gold_price_usd.csv",
-        "description": "Synthetic monthly gold price USD/oz tracking historical dynamics (1989-2024)",
+        "description": "Monthly gold price USD/oz (1989–2024) — log-normal walk with flight-to-safety spikes",
         "frequency": "M",
         "domain": "finance",
     },
     # ── Digital ───────────────────────────────────────────────────────────────
     "web_traffic": {
         "file": "web_traffic.csv",
-        "description": "Daily Wikipedia article pageviews (2022-2024)",
+        "description": "Daily website pageviews (2022–2024) — weekly seasonality with campaign-driven spikes",
         "frequency": "D",
         "domain": "digital",
+    },
+    # ── Hospitality ───────────────────────────────────────────────────────────
+    "hotel_occupancy": {
+        "file": "hotel_occupancy.csv",
+        "description": "Daily hotel occupancy % with rate, events & holiday covariates — revenue management use case",
+        "frequency": "D",
+        "domain": "hospitality",
+        "covariate_cols": ["avg_daily_rate", "local_events_count", "holiday_flag"],
+    },
+    # ── E-commerce ────────────────────────────────────────────────────────────
+    "ecommerce_orders": {
+        "file": "ecommerce_orders.csv",
+        "description": "Daily order volume with ad spend, discount & competitor price — demand forecasting with marketing levers",
+        "frequency": "D",
+        "domain": "ecommerce",
+        "covariate_cols": ["ad_spend_usd", "discount_pct", "competitor_price_index"],
     },
 }
 

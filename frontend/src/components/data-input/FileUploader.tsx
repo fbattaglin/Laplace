@@ -95,7 +95,7 @@ export function FileUploader({ onUploadComplete }: Props) {
           className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
             isDragOver
               ? 'border-accent-blue bg-accent-blue/5'
-              : 'border-secondary/20 hover:border-secondary/40'
+              : 'border-accent-blue/20 bg-accent-blue/[0.02] hover:border-accent-blue/40 hover:bg-accent-blue/5'
           }`}
         >
           {uploadMutation.isPending ? (
@@ -105,9 +105,14 @@ export function FileUploader({ onUploadComplete }: Props) {
             </div>
           ) : (
             <>
-              <p className="text-secondary mb-2">Drag & drop a CSV or XLSX file here</p>
-              <p className="text-sm text-secondary/60 mb-4">or</p>
-              <label className="inline-block px-4 py-2 bg-primary text-white rounded-lg cursor-pointer hover:bg-primary/90 transition-colors text-sm">
+              <div className="w-10 h-10 rounded-full bg-accent-blue/10 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-5 h-5 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium text-primary mb-1">Drag & drop your CSV or XLSX here</p>
+              <p className="text-xs text-secondary/60 mb-4">or</p>
+              <label className="inline-block px-4 py-2 bg-accent-blue text-white rounded-lg cursor-pointer hover:bg-accent-blue/90 transition-colors text-sm font-medium">
                 Browse files
                 <input
                   type="file"
