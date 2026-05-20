@@ -12,6 +12,7 @@ import { RollingStatsChart } from './RollingStatsChart'
 import { OutlierHighlight } from './OutlierHighlight'
 import { StationarityPanel } from './StationarityPanel'
 import { DataPrepPanel } from './DataPrepPanel'
+import { SeasonalityOverride } from './SeasonalityOverride'
 
 type Tab = 'overview' | 'decomposition' | 'distribution' | 'stability' | 'dataPrepLab'
 
@@ -151,6 +152,9 @@ export function DiagnosticsScreen() {
 
       {activeTab === 'stability' && (
         <div className="space-y-5">
+          {displayMode === 'lab' && (
+            <SeasonalityOverride frequency={timeSeriesData.frequency} />
+          )}
           {data.rolling_stats && (
             <RollingStatsChart data={data.rolling_stats} dates={timeSeriesData.dates} />
           )}

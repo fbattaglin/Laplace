@@ -36,15 +36,20 @@ const DOMAIN_COLORS: Record<string, string> = {
 }
 
 const DOMAIN_ORDER = [
-  'transport', 'energy', 'retail', 'economics', 'manufacturing',
-  'climate', 'environment', 'healthcare', 'finance', 'digital', 'hospitality', 'ecommerce',
+  'transport', 'energy', 'retail', 'hospitality', 'ecommerce',
+  'economics', 'healthcare', 'finance', 'digital', 'environment',
+  'manufacturing', 'climate',
 ]
 
-// airline_passengers is the one canonical research classic; everything else is real-world
-const CLASSIC_DATASET_NAMES = new Set(['airline_passengers'])
+// Classic benchmarks every forecasting practitioner knows
+const CLASSIC_DATASET_NAMES = new Set([
+  'airline_passengers',  // Box-Jenkins 1970 — the canonical benchmark
+  'co2_atmospheric',     // Keeling Curve — iconic trend + seasonality
+  'us_retail_sales',     // Macro-economics textbook standard
+])
 
 const GROUP_SUBTITLES: Record<string, string> = {
-  'Classic Benchmark': 'The canonical forecasting benchmark — ideal for calibrating model expectations.',
+  'Classic Benchmarks': 'Textbook forecasting series — ideal for calibrating model expectations.',
   'Real-World Problems': 'Diverse domains with realistic noise, seasonality, and structural patterns.',
 }
 
@@ -59,7 +64,7 @@ function groupByCategory(datasets: DatasetMeta[]): { label: string; items: Datas
   })
 
   const groups: { label: string; items: DatasetMeta[] }[] = []
-  if (classics.length > 0) groups.push({ label: 'Classic Benchmark', items: classics })
+  if (classics.length > 0) groups.push({ label: 'Classic Benchmarks', items: classics })
   if (realWorld.length > 0) groups.push({ label: 'Real-World Problems', items: realWorld })
   return groups
 }

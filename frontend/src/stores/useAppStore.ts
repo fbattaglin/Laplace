@@ -40,6 +40,7 @@ interface AppState {
   preprocessedData: PreprocessedResult | null
   backtestConfig: BacktestConfig
   forecastResult: StoredForecast | null  // persisted so ExportScreen can include it
+  periodOverride: number | null  // Lab: override auto-detected seasonality period
 
   setStep: (step: Step) => void
   setDisplayMode: (mode: DisplayMode) => void
@@ -49,6 +50,7 @@ interface AppState {
   resetPreprocessing: () => void
   setBacktestConfig: (config: BacktestConfig) => void
   setForecastResult: (result: StoredForecast | null) => void
+  setPeriodOverride: (period: number | null) => void
   reset: () => void
 
   // Returns preprocessed data if available, otherwise raw — used by all downstream steps
@@ -65,16 +67,18 @@ export const useAppStore = create<AppState>()(
       preprocessedData: null,
       backtestConfig: DEFAULT_BACKTEST_CONFIG,
       forecastResult: null,
+      periodOverride: null,
 
       setStep: (step) => set({ currentStep: step }),
       setDisplayMode: (mode) => set({ displayMode: mode }),
       // Clear forecast result when new data is loaded
-      setTimeSeriesData: (data) => set({ timeSeriesData: data, preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING, forecastResult: null }),
+      setTimeSeriesData: (data) => set({ timeSeriesData: data, preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING, forecastResult: null, periodOverride: null }),
       setPreprocessingConfig: (config) => set({ preprocessingConfig: config }),
       setPreprocessedData: (data) => set({ preprocessedData: data }),
       resetPreprocessing: () => set({ preprocessedData: null, preprocessingConfig: DEFAULT_PREPROCESSING }),
       setBacktestConfig: (config) => set({ backtestConfig: config }),
       setForecastResult: (result) => set({ forecastResult: result }),
+      setPeriodOverride: (period) => set({ periodOverride: period }),
 
       reset: () => set({
         currentStep: 'dataInput',
@@ -83,6 +87,7 @@ export const useAppStore = create<AppState>()(
         preprocessingConfig: DEFAULT_PREPROCESSING,
         backtestConfig: DEFAULT_BACKTEST_CONFIG,
         forecastResult: null,
+        periodOverride: null,
       }),
 
       getActiveData: () => {

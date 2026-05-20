@@ -9,9 +9,9 @@ from laplace.models.schemas import FREQUENCY_MAP, Frequency
 
 
 def compute_stl(
-    values: list[float], frequency: Frequency
+    values: list[float], frequency: Frequency, period_override: int | None = None,
 ) -> dict:
-    period = FREQUENCY_MAP[frequency].period
+    period = period_override if period_override and period_override >= 2 else FREQUENCY_MAP[frequency].period
     arr = np.array(values, dtype=np.float64)
     n = len(arr)
 
@@ -63,9 +63,9 @@ def compute_acf_pacf(values: list[float], n_lags: int | None = None) -> dict:
     }
 
 
-def _signal_strength(arr: np.ndarray, frequency: Frequency) -> tuple[float, float, float]:
+def _signal_strength(arr: np.ndarray, frequency: Frequency, period_override: int | None = None) -> tuple[float, float, float]:
     """Compute trend and seasonal strength from STL decomposition (Hyndman et al.)."""
-    period = FREQUENCY_MAP[frequency].period
+    period = period_override if period_override and period_override >= 2 else FREQUENCY_MAP[frequency].period
 
     if period < 2 or len(arr) < 2 * period:
         trend_series = pd.Series(arr).rolling(window=max(3, len(arr) // 5), center=True).mean()
@@ -137,17 +137,17 @@ def _stationarity(arr: np.ndarray) -> float:
     return score_map[(adf_stationary, kpss_stationary)]
 
 
-def _sample_adequacy(n: int, frequency: Frequency) -> float:
+def _sample_adequacy(n: int, frequency: Frequency, period_override: int | None = None) -> float:
     """Score based on having enough data relative to seasonal period."""
-    period = FREQUENCY_MAP[frequency].period
+    period = period_override if period_override and period_override >= 2 else FREQUENCY_MAP[frequency].period
     min_required = max(3 * period, 30)
     ratio = min(n / min_required, 1.0)
     return float(ratio * 100)
 
 
-def _noise_level(arr: np.ndarray, frequency: Frequency) -> float:
+def _noise_level(arr: np.ndarray, frequency: Frequency, period_override: int | None = None) -> float:
     """Lower remainder variance relative to total = cleaner signal."""
-    period = FREQUENCY_MAP[frequency].period
+    period = period_override if period_override and period_override >= 2 else FREQUENCY_MAP[frequency].period
     var_total = float(np.var(arr))
 
     if var_total < 1e-10:
@@ -215,9 +215,9 @@ def compute_distribution(values: list[float]) -> dict:
     }
 
 
-def compute_rolling_stats(values: list[float], frequency: Frequency) -> dict:
+def compute_rolling_stats(values: list[float], frequency: Frequency, period_override: int | None = None) -> dict:
     arr = np.array(values, dtype=np.float64)
-    period = FREQUENCY_MAP[frequency].period
+    period = period_override if period_override and period_override >= 2 else FREQUENCY_MAP[frequency].period
     window = max(period, min(len(arr) // 4, 30))
 
     s = pd.Series(arr)
@@ -291,7 +291,9 @@ def compute_stationarity(values: list[float]) -> dict:
     }
 
 
-def compute_forecastability(values: list[float], frequency: Frequency) -> dict:
+def compute_forecastability(
+    values: list[float], frequency: Frequency, period_override: int | None = None,
+) -> dict:
     """
     Composite forecastability score (0-100) with 5 weighted dimensions.
 
@@ -299,11 +301,11 @@ def compute_forecastability(values: list[float], frequency: Frequency) -> dict:
     """
     arr = np.array(values, dtype=np.float64)
 
-    trend_str, seasonal_str, signal_score = _signal_strength(arr, frequency)
+    trend_str, seasonal_str, signal_score = _signal_strength(arr, frequency, period_override)
     regularity_score = _regularity(arr)
     stationarity_score = _stationarity(arr)
-    adequacy_score = _sample_adequacy(len(arr), frequency)
-    noise_score = _noise_level(arr, frequency)
+    adequacy_score = _sample_adequacy(len(arr), frequency, period_override)
+    noise_score = _noise_level(arr, frequency, period_override)
 
     weights = {
         "signal_strength": 0.40,

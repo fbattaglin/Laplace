@@ -33,12 +33,14 @@ async def run_diagnostics(request: DiagnosticsRequest):
     if len(request.values) < 10:
         raise HTTPException(status_code=422, detail="Need at least 10 data points for diagnostics")
 
-    stl_raw = compute_stl(request.values, request.frequency)
+    period_override = request.period_override
+
+    stl_raw = compute_stl(request.values, request.frequency, period_override)
     acf_raw = compute_acf_pacf(request.values)
-    forecast_raw = compute_forecastability(request.values, request.frequency)
+    forecast_raw = compute_forecastability(request.values, request.frequency, period_override)
     desc_raw = compute_descriptive_stats(request.values)
     dist_raw = compute_distribution(request.values)
-    rolling_raw = compute_rolling_stats(request.values, request.frequency)
+    rolling_raw = compute_rolling_stats(request.values, request.frequency, period_override)
     outlier_raw = compute_outliers(request.values)
     stat_raw = compute_stationarity(request.values)
 

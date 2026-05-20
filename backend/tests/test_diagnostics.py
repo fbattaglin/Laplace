@@ -212,6 +212,69 @@ async def test_diagnostics_endpoint(client):
     assert data["stationarity"]["verdict"] != ""
 
 
+class TestPeriodOverride:
+    """Tests for the seasonality period override (4B-3)."""
+
+    def test_stl_with_custom_period(self):
+        np.random.seed(0)
+        t = np.arange(200)
+        # Generate series with period=7 (weekly)
+        values = (50 * np.sin(2 * np.pi * t / 7) + np.random.normal(0, 2, 200)).tolist()
+        # Default period for daily is 7
+        result_auto = compute_stl(values, "D")
+        # Override to period=14
+        result_override = compute_stl(values, "D", period_override=14)
+        assert len(result_auto["seasonal"]) == 200
+        assert len(result_override["seasonal"]) == 200
+        # Seasonal components should differ
+        assert result_auto["seasonal"] != result_override["seasonal"]
+
+    def test_stl_period_override_below_2_ignored(self):
+        values = list(range(50))
+        result = compute_stl(values, "M", period_override=1)
+        # period=1 < 2, should fall back to frequency default (period=12)
+        assert len(result["trend"]) == 50
+
+    def test_forecastability_with_period_override(self):
+        np.random.seed(0)
+        t = np.arange(200)
+        values = (100 * np.sin(2 * np.pi * t / 12) + np.random.normal(0, 5, 200)).tolist()
+        result_auto = compute_forecastability(values, "M")
+        result_override = compute_forecastability(values, "M", period_override=6)
+        # Scores should differ when period is overridden
+        assert result_auto["total_score"] != result_override["total_score"]
+
+    def test_rolling_stats_with_period_override(self):
+        np.random.seed(0)
+        values = np.random.normal(100, 10, 200).tolist()
+        result_auto = compute_rolling_stats(values, "M")
+        result_override = compute_rolling_stats(values, "M", period_override=24)
+        # Window size should be different
+        assert result_override["window"] >= 24  # should use at least the overridden period
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_with_period_override(client):
+    """Diagnostics endpoint accepts period_override parameter."""
+    response = await client.get("/api/datasets/airline_passengers")
+    assert response.status_code == 200
+    ts_data = response.json()
+
+    # Run with default period
+    resp_auto = await client.post("/api/diagnostics", json=ts_data)
+    assert resp_auto.status_code == 200
+
+    # Run with overridden period
+    ts_data["period_override"] = 6
+    resp_override = await client.post("/api/diagnostics", json=ts_data)
+    assert resp_override.status_code == 200
+
+    # Forecastability score should differ
+    auto_score = resp_auto.json()["forecastability"]["total_score"]
+    override_score = resp_override.json()["forecastability"]["total_score"]
+    assert auto_score != override_score
+
+
 @pytest.mark.asyncio
 async def test_diagnostics_too_few_points(client):
     response = await client.post(

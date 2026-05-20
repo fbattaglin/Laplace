@@ -88,6 +88,7 @@ class DiagnosticsRequest(BaseModel):
     values: list[float]
     frequency: Frequency
     name: str
+    period_override: int | None = None  # Override auto-detected seasonality period (Lab)
 
 
 class DescriptiveStats(BaseModel):

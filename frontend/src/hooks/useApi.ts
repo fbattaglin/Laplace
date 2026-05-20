@@ -85,6 +85,7 @@ export function useConfirmUpload() {
 export function useDiagnostics(data: TimeSeriesData | null) {
   const preprocessingConfig = useAppStore((s) => s.preprocessingConfig)
   const preprocessedData = useAppStore((s) => s.preprocessedData)
+  const periodOverride = useAppStore((s) => s.periodOverride)
 
   // Use the active data (preprocessed if available, otherwise raw)
   const activeData = data
@@ -94,8 +95,8 @@ export function useDiagnostics(data: TimeSeriesData | null) {
     : null
 
   return useQuery({
-    queryKey: ['diagnostics', data?.name, data?.n_points, preprocessingHash(preprocessedData ? preprocessingConfig : null)],
-    queryFn: () => runDiagnostics(activeData!),
+    queryKey: ['diagnostics', data?.name, data?.n_points, preprocessingHash(preprocessedData ? preprocessingConfig : null), periodOverride],
+    queryFn: () => runDiagnostics(activeData!, periodOverride),
     enabled: !!activeData,
   })
 }

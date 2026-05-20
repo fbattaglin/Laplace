@@ -98,10 +98,16 @@ export async function confirmUpload(params: {
   return response.json()
 }
 
-export async function runDiagnostics(data: TimeSeriesData): Promise<DiagnosticsResponse> {
+export async function runDiagnostics(
+  data: TimeSeriesData,
+  periodOverride?: number | null,
+): Promise<DiagnosticsResponse> {
   return apiFetch('/diagnostics', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      period_override: periodOverride ?? undefined,
+    }),
   })
 }
 

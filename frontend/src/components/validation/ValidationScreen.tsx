@@ -6,6 +6,7 @@ import { t } from '../../lib/copy'
 import { MetricsTable } from './MetricsTable'
 import { BacktestChart } from './BacktestChart'
 import { BacktestConfigPanel } from './BacktestConfigPanel'
+import { CalibrationChart } from './CalibrationChart'
 import { FoldDetail } from './FoldDetail'
 
 export function ValidationScreen() {
@@ -95,6 +96,11 @@ export function ValidationScreen() {
         dates={timeSeriesData.dates}
         values={timeSeriesData.values}
       />
+
+      {/* Calibration chart (Lab-only) */}
+      {displayMode === 'lab' && data.folds.length > 0 && (
+        <CalibrationChart folds={data.folds} />
+      )}
 
       <div className="flex justify-between items-center pt-4">
         <button
