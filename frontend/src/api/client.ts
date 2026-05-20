@@ -177,3 +177,11 @@ export async function saveToLog(entry: Record<string, unknown>): Promise<{ statu
     body: JSON.stringify(entry),
   })
 }
+
+export async function deleteLogEntry(index: number): Promise<{ status: string }> {
+  return apiFetch(`/export/log/${index}`, { method: 'DELETE' })
+}
+
+export async function clearLog(): Promise<{ status: string }> {
+  return apiFetch('/export/log', { method: 'DELETE' })
+}

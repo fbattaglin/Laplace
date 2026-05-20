@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from laplace.models.schemas import Frequency
 from laplace.services.export import (
     append_results_log,
+    clear_results_log,
+    delete_log_entry,
     generate_csv_report,
     generate_xlsx_report,
     read_results_log,
@@ -84,3 +86,21 @@ async def get_results_log():
 async def save_to_log(entry: LogEntry):
     path = append_results_log(entry.model_dump())
     return {"status": "ok", "path": path}
+
+
+@router.delete("/log")
+async def clear_log():
+    """Delete all log entries."""
+    clear_results_log()
+    return {"status": "ok"}
+
+
+@router.delete("/log/{index}")
+async def delete_log_row(index: int):
+    """Delete a single log entry by 0-based index."""
+    try:
+        delete_log_entry(index)
+        return {"status": "ok"}
+    except IndexError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { clearLog, deleteLogEntry } from '../../api/client'
 import { useRunHistory } from '../../hooks/useApi'
 import { useAppStore } from '../../stores/useAppStore'
 import { modelColorMap } from '../../lib/colors'
@@ -24,20 +26,6 @@ function parseNum(v: string | undefined): number {
   if (!v) return 0
   const n = parseFloat(v)
   return isNaN(n) ? 0 : n
-}
-
-function sortEntries(entries: RunEntry[], field: SortField, dir: SortDir): RunEntry[] {
-  const sorted = [...entries]
-  sorted.sort((a, b) => {
-    let cmp = 0
-    if (field === 'timestamp' || field === 'dataset' || field === 'model') {
-      cmp = (a[field] || '').localeCompare(b[field] || '')
-    } else {
-      cmp = parseNum(a[field]) - parseNum(b[field])
-    }
-    return dir === 'asc' ? cmp : -cmp
-  })
-  return sorted
 }
 
 // ─── Model Win Rate Analytics ────────────────────────────────────────────────
@@ -146,8 +134,25 @@ function SortHeader({
 export function RunHistory() {
   const { data, isLoading } = useRunHistory()
   const { displayMode } = useAppStore()
+  const queryClient = useQueryClient()
   const [sortField, setSortField] = useState<SortField>('timestamp')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [confirmClear, setConfirmClear] = useState(false)
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['run-history'] })
+
+  const deleteMutation = useMutation({
+    mutationFn: (originalIndex: number) => deleteLogEntry(originalIndex),
+    onSuccess: invalidate,
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: clearLog,
+    onSuccess: () => {
+      invalidate()
+      setConfirmClear(false)
+    },
+  })
 
   const entries = (data?.entries || []) as RunEntry[]
 
@@ -170,7 +175,18 @@ export function RunHistory() {
     }
   }
 
-  const sorted = sortEntries(entries, sortField, sortDir)
+  // Build sorted list with original indices so deletions map to the right row
+  const indexed = entries.map((entry, originalIndex) => ({ entry, originalIndex }))
+  indexed.sort((a, b) => {
+    let cmp = 0
+    if (sortField === 'timestamp' || sortField === 'dataset' || sortField === 'model') {
+      cmp = (a.entry[sortField] || '').localeCompare(b.entry[sortField] || '')
+    } else {
+      cmp = parseNum(a.entry[sortField]) - parseNum(b.entry[sortField])
+    }
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
   const winRates = entries.length >= 2 ? computeWinRates(entries) : []
 
   return (
@@ -184,10 +200,41 @@ export function RunHistory() {
       <div className="bg-surface rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-primary">Run History</h3>
-          <span className="text-[10px] text-secondary/60">
-            {entries.length} run{entries.length !== 1 ? 's' : ''} saved
-          </span>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-secondary/60">
+              {entries.length} run{entries.length !== 1 ? 's' : ''} saved
+            </span>
+
+            {/* Clear all — with inline confirmation */}
+            {confirmClear ? (
+              <span className="flex items-center gap-1.5">
+                <span className="text-[10px] text-secondary">Clear all?</span>
+                <button
+                  onClick={() => clearMutation.mutate()}
+                  disabled={clearMutation.isPending}
+                  className="text-[10px] font-medium text-accent-red hover:opacity-80 transition-opacity"
+                >
+                  {clearMutation.isPending ? 'Clearing…' : 'Yes, clear'}
+                </button>
+                <button
+                  onClick={() => setConfirmClear(false)}
+                  className="text-[10px] text-secondary hover:text-primary transition-colors"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="text-[10px] text-secondary hover:text-accent-red transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -197,11 +244,12 @@ export function RunHistory() {
                 <SortHeader label="Model" field="model" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
                 <SortHeader label="sMAPE" field="smape" currentField={sortField} currentDir={sortDir} onSort={handleSort} align="right" />
                 <SortHeader label="Score" field="forecastability_score" currentField={sortField} currentDir={sortDir} onSort={handleSort} align="right" />
-                <th className="text-right text-secondary font-medium pb-2">n</th>
+                <th className="text-right text-secondary font-medium pb-2 pr-0">n</th>
+                <th className="w-6" />
               </tr>
             </thead>
             <tbody>
-              {sorted.map((entry, i) => {
+              {indexed.map(({ entry, originalIndex }) => {
                 const score = parseNum(entry.forecastability_score)
                 const scoreColor =
                   score >= 70
@@ -211,9 +259,15 @@ export function RunHistory() {
                     : score > 0
                     ? 'text-red-400'
                     : 'text-secondary'
+                const isDeleting = deleteMutation.isPending && deleteMutation.variables === originalIndex
 
                 return (
-                  <tr key={i} className="border-b border-canvas/50 hover:bg-canvas/50 transition-colors">
+                  <tr
+                    key={originalIndex}
+                    className={`border-b border-canvas/50 group transition-colors ${
+                      isDeleting ? 'opacity-40' : 'hover:bg-canvas/50'
+                    }`}
+                  >
                     <td className="py-2 pr-4 text-secondary font-mono">
                       {entry.timestamp?.slice(0, 10) || '—'}
                     </td>
@@ -237,8 +291,19 @@ export function RunHistory() {
                         ? parseFloat(entry.forecastability_score).toFixed(0)
                         : '—'}
                     </td>
-                    <td className="py-2 text-right font-mono text-secondary">
+                    <td className="py-2 pr-3 text-right font-mono text-secondary">
                       {entry.n_observations || '—'}
+                    </td>
+                    {/* Per-row delete — visible on row hover */}
+                    <td className="py-2 w-6">
+                      <button
+                        onClick={() => deleteMutation.mutate(originalIndex)}
+                        disabled={deleteMutation.isPending}
+                        title="Delete this entry"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-secondary hover:text-accent-red disabled:opacity-30 text-sm leading-none"
+                      >
+                        ×
+                      </button>
                     </td>
                   </tr>
                 )
@@ -246,6 +311,13 @@ export function RunHistory() {
             </tbody>
           </table>
         </div>
+
+        {deleteMutation.isError && (
+          <p className="mt-2 text-xs text-accent-red">Failed to delete entry.</p>
+        )}
+        {clearMutation.isError && (
+          <p className="mt-2 text-xs text-accent-red">Failed to clear log.</p>
+        )}
       </div>
     </div>
   )

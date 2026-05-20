@@ -3,7 +3,13 @@ import csv
 import pytest
 from openpyxl import load_workbook
 
-from laplace.services.export import append_results_log, generate_xlsx_report
+from laplace.services.export import (
+    append_results_log,
+    clear_results_log,
+    delete_log_entry,
+    generate_xlsx_report,
+    read_results_log,
+)
 
 
 class TestXlsxReport:
@@ -120,6 +126,45 @@ class TestResultsLog:
             rows = list(reader)
         assert len(rows) == 3
 
+    def test_delete_entry_by_index(self, tmp_path, monkeypatch):
+        log_path = tmp_path / "results_log.csv"
+        monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+
+        for i in range(3):
+            append_results_log({"dataset": f"ds_{i}", "model": "test"})
+
+        delete_log_entry(1)  # delete middle entry (ds_1)
+
+        remaining = read_results_log()
+        assert len(remaining) == 2
+        assert remaining[0]["dataset"] == "ds_0"
+        assert remaining[1]["dataset"] == "ds_2"
+
+    def test_delete_out_of_range_raises(self, tmp_path, monkeypatch):
+        log_path = tmp_path / "results_log.csv"
+        monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+
+        append_results_log({"dataset": "only_one", "model": "test"})
+
+        with pytest.raises(IndexError):
+            delete_log_entry(5)
+
+    def test_clear_log_removes_file(self, tmp_path, monkeypatch):
+        log_path = tmp_path / "results_log.csv"
+        monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+
+        append_results_log({"dataset": "to_be_cleared", "model": "test"})
+        assert log_path.exists()
+
+        clear_results_log()
+        assert not log_path.exists()
+        assert read_results_log() == []
+
+    def test_clear_nonexistent_log_no_error(self, tmp_path, monkeypatch):
+        log_path = tmp_path / "does_not_exist.csv"
+        monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+        clear_results_log()  # should not raise
+
 
 @pytest.mark.asyncio
 async def test_export_xlsx_endpoint(client):
@@ -137,6 +182,58 @@ async def test_export_xlsx_endpoint(client):
     assert response.status_code == 200
     assert "spreadsheetml" in response.headers["content-type"]
     assert len(response.content) > 100
+
+
+@pytest.mark.asyncio
+async def test_delete_log_entry_endpoint(client, tmp_path, monkeypatch):
+    log_path = tmp_path / "results_log.csv"
+    monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+
+    log_entry = {
+        "dataset": "airline", "model": "Chronos-2", "smape": 5.0,
+        "mae": 10.0, "rmse": 12.0, "horizon": 12,
+        "forecastability_score": 77.0, "n_observations": 144, "frequency": "M",
+    }
+    # Save two entries
+    await client.post("/api/export/log", json=log_entry)
+    await client.post("/api/export/log", json={**log_entry, "dataset": "energy_demand"})
+
+    # Delete the first entry (index 0)
+    resp = await client.delete("/api/export/log/0")
+    assert resp.status_code == 200
+
+    remaining = read_results_log()
+    assert len(remaining) == 1
+    assert remaining[0]["dataset"] == "energy_demand"
+
+
+@pytest.mark.asyncio
+async def test_delete_log_entry_out_of_range(client, tmp_path, monkeypatch):
+    log_path = tmp_path / "results_log.csv"
+    monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+
+    resp = await client.delete("/api/export/log/99")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_clear_log_endpoint(client, tmp_path, monkeypatch):
+    log_path = tmp_path / "results_log.csv"
+    monkeypatch.setattr("laplace.services.export.RESULTS_LOG_PATH", log_path)
+
+    log_entry = {
+        "dataset": "airline", "model": "Chronos-2", "smape": 5.0,
+        "mae": 10.0, "rmse": 12.0, "horizon": 12,
+        "forecastability_score": 77.0, "n_observations": 144, "frequency": "M",
+    }
+    await client.post("/api/export/log", json=log_entry)
+
+    resp = await client.delete("/api/export/log")
+    assert resp.status_code == 200
+
+    # Log should be empty now
+    resp = await client.get("/api/export/log")
+    assert resp.json()["entries"] == []
 
 
 @pytest.mark.asyncio

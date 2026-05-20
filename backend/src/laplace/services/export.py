@@ -118,6 +118,29 @@ def read_results_log() -> list[dict]:
         return list(reader)
 
 
+def delete_log_entry(index: int) -> None:
+    """Delete a single entry from the log by 0-based index."""
+    entries = read_results_log()
+    if index < 0 or index >= len(entries):
+        raise IndexError(f"Log entry index {index} out of range (0–{len(entries) - 1})")
+    entries.pop(index)
+    _write_results_log(entries)
+
+
+def clear_results_log() -> None:
+    """Delete all entries (remove the log file)."""
+    if RESULTS_LOG_PATH.exists():
+        RESULTS_LOG_PATH.unlink()
+
+
+def _write_results_log(entries: list[dict]) -> None:
+    """Overwrite the log with a new list of entries."""
+    with open(RESULTS_LOG_PATH, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=LOG_HEADERS)
+        writer.writeheader()
+        writer.writerows(entries)
+
+
 HEADER_FONT = Font(bold=True, size=11)
 HEADER_FILL = PatternFill(start_color="E8E8ED", end_color="E8E8ED", fill_type="solid")
 THIN_BORDER = Border(bottom=Side(style="thin", color="DDDDDD"))
