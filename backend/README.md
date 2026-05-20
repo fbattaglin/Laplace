@@ -1,8 +1,11 @@
 # Laplace — Backend
 
-FastAPI backend for the Laplace time series forecasting app. Exposes a REST API for dataset management, signal diagnostics, data preprocessing, rolling-origin backtesting, ensemble forecasting, and report export.
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![uv](https://img.shields.io/badge/uv-package%20manager-DE5FE9)](https://docs.astral.sh/uv)
+[![Tests](https://img.shields.io/badge/tests-144%20passing-22C55E)](./tests)
 
-**Runtime:** Python 3.12 · FastAPI · uvicorn · uv
+FastAPI backend for the Laplace time series forecasting app. Handles dataset management, signal diagnostics, data preprocessing, rolling-origin backtesting, ensemble forecasting, and report export.
 
 ---
 
@@ -16,37 +19,48 @@ uv sync
 uv run uvicorn laplace.main:app --reload --port 8000
 ```
 
-Interactive API docs: **http://localhost:8000/docs**
+Interactive API docs: **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
 ---
 
 ## API Endpoints
 
+### Datasets
+
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/health` | Health check |
-| `GET` | `/api/datasets` | List all 16 bundled datasets |
-| `GET` | `/api/datasets/{name}` | Load a bundled dataset as `TimeSeriesData` |
-| `POST` | `/api/datasets/upload` | Upload CSV or XLSX — returns preview + auto-detected columns |
-| `POST` | `/api/datasets/confirm` | Validate preloaded dataset selection, return `TimeSeriesData` |
+| `GET` | `/api/datasets` | List all 15 bundled datasets |
+| `GET` | `/api/datasets/{name}` | Load a dataset as `TimeSeriesData` |
+| `POST` | `/api/datasets/upload` | Upload CSV/XLSX — returns preview + auto-detected columns |
+| `POST` | `/api/datasets/confirm` | Confirm preloaded dataset selection |
 | `POST` | `/api/datasets/upload/confirm` | Confirm uploaded file with column mapping + optional covariates |
+
+### Analysis
+
+| Method | Path | Description |
+|---|---|---|
 | `POST` | `/api/diagnostics` | STL + ACF/PACF + Forecastability Score + outlier/stationarity analysis |
 | `POST` | `/api/preprocessing` | Apply outlier removal, smoothing, and/or differencing |
 | `POST` | `/api/backtest` | Rolling-origin CV across 5 models (configurable folds, horizon, covariates) |
 | `POST` | `/api/forecast` | Single-model or Ensemble forecast with 80%/90% prediction intervals |
-| `POST` | `/api/export/xlsx` | Generate 5-sheet XLSX report (streaming download) |
+
+### Export
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/export/xlsx` | 5-sheet formatted XLSX report |
 | `POST` | `/api/export/csv` | Flat CSV with metrics + forecast values |
-| `GET` | `/api/export/log` | Read `results_log.csv` entries |
+| `GET` | `/api/export/log` | Read saved run history |
 | `POST` | `/api/export/log` | Append one result row to `results_log.csv` |
 
 ---
 
-## Key Request / Response Shapes
+## Key Schemas
 
-### `POST /api/backtest`
+### Backtest
 
 ```json
-// Request
+// POST /api/backtest — Request
 {
   "values": [112, 118, 132],
   "frequency": "M",
@@ -74,134 +88,127 @@ Interactive API docs: **http://localhost:8000/docs**
       "train_end_idx": 108,
       "actual": [430, 445, 460],
       "forecasts": [{ "model_name": "Chronos-2", "point_forecast": [435, 450, 465], "..." }],
-      "metrics": { "Chronos-2": { "smape": 4.8, "..." } }
+      "metrics": { "Chronos-2": { "smape": 4.8 } }
     }
   ]
 }
 ```
 
-### `POST /api/forecast`
+### Forecast
 
 ```json
-// Request — single model
-{
-  "values": [112, 118, 132],
-  "frequency": "M",
-  "horizon": 12,
-  "model_name": "Chronos-2"
-}
+// POST /api/forecast — single model
+{ "values": [112, 118, 132], "frequency": "M", "horizon": 12, "model_name": "Chronos-2" }
 
-// Request — Ensemble (requires backtest_metrics for weight computation)
+// Ensemble (requires backtest_metrics for weight computation)
 {
   "values": [112, 118, 132],
   "frequency": "M",
   "horizon": 12,
   "model_name": "Ensemble",
-  "backtest_metrics": {
-    "Chronos-2": { "smape": 5.0, "mae": 20.0, "rmse": 24.8, "mase": 0.685 }
-  },
+  "backtest_metrics": { "Chronos-2": { "smape": 5.0, "mae": 20.0, "rmse": 24.8, "mase": 0.685 } },
   "covariates": { "temperature": [20.1, 21.3] },
   "future_covariates": { "temperature": [22.0, 22.5, 21.8] }
 }
 
 // Response
 {
-  "horizon": 12,
-  "frequency": "M",
+  "horizon": 12, "frequency": "M",
   "forecasts": [{
     "model_name": "Ensemble",
     "point_forecast": [450.1, 470.3, 488.9],
-    "lo_80": [420.0, 438.0, 455.2],
-    "hi_80": [480.0, 502.0, 522.6],
-    "lo_90": [405.0, 422.0, 438.4],
-    "hi_90": [495.0, 518.0, 539.4]
+    "lo_80": [420.0, 438.0, 455.2], "hi_80": [480.0, 502.0, 522.6],
+    "lo_90": [405.0, 422.0, 438.4], "hi_90": [495.0, 518.0, 539.4]
   }]
 }
 ```
 
-### `POST /api/datasets/upload/confirm`
+### Upload Confirm (multipart)
 
-Multipart form — sends file + column selections:
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `file` | File | ✓ | CSV or XLSX (max 10MB) |
-| `datetime_col` | string | ✓ | Column containing timestamps |
-| `target_col` | string | ✓ | Column to forecast |
-| `frequency` | string | — | Override auto-detected frequency (`H`, `D`, `W`, `M`, `Q`, `Y`) |
-| `covariate_cols` | string | — | JSON array of additional numeric columns, e.g. `'["temp","promo"]'` |
+| Field | Required | Description |
+|---|---|---|
+| `file` | ✓ | CSV or XLSX, max 10MB |
+| `datetime_col` | ✓ | Column containing timestamps |
+| `target_col` | ✓ | Column to forecast |
+| `frequency` | — | Override auto-detected freq (`H D W M Q Y`) |
+| `covariate_cols` | — | JSON array: `'["temp","promo"]'` |
 
 ---
 
 ## Services
 
 ### `parser.py`
-CSV/XLSX parsing, auto-detection of datetime/target columns, frequency inference, gap interpolation, and covariate column extraction. `validate_and_prepare()` accepts optional `covariate_cols` — aligns them with the validated date index and handles missing values.
+CSV/XLSX parsing, auto-detection of datetime/target columns, frequency inference (via `pd.infer_freq` + median-diff fallback), gap interpolation (up to 3 consecutive missing), and covariate column extraction. `validate_and_prepare()` aligns covariates with the validated date index and handles missing values.
 
 ### `diagnostics.py`
-Full signal analysis: STL decomposition (statsmodels), ACF/PACF, rolling statistics, outlier detection (IQR / Z-score), ADF + KPSS stationarity tests, and the composite Forecastability Score (5 dimensions, 0–100).
+Full signal analysis: STL decomposition, ACF/PACF, rolling statistics, outlier detection (IQR), ADF + KPSS stationarity tests, and the 5-dimension Forecastability Score (0–100). Accepts an optional `period_override` parameter that propagates through STL, forecastability, and rolling stats — used by the Lab seasonality override control.
 
 ### `preprocessing.py`
-Optional data preparation pipeline: outlier removal (IQR or Z-score, with interpolation or winsorisation), exponential/simple moving average smoothing, and differencing. Returns a `PreprocessedResult` with a log of applied operations.
+Optional data preparation pipeline: outlier removal (IQR or Z-score, with interpolation or winsorisation), exponential/simple moving average smoothing, first/second-order differencing. Returns a `PreprocessedResult` with a log of applied operations and original values preserved.
 
 ### `forecasting.py`
 Two foundation model singletons (loaded once, reused across requests):
-- **`ChronosSingleton`** — `autogluon/chronos-2-small` via `BaseChronosPipeline`. MPS on Apple Silicon, CPU elsewhere.
-- **`TimesFMSingleton`** — `google/timesfm-2.0-500m-pytorch` (500M params, CPU).
 
-`run_statsforecast()` uses StatsForecast with `AutoETS`, `AutoTheta`, and `SeasonalNaive`. `run_all_models()` runs all five in sequence; failures are caught and logged individually.
+- **`ChronosSingleton`** — `autogluon/chronos-2-small` via `BaseChronosPipeline`. MPS on Apple Silicon, CPU elsewhere. Cold start ~5s.
+- **`TimesFMSingleton`** — `google/timesfm-2.0-500m-pytorch` (500M params, CPU). Cold start ~15s.
 
-All models accept `covariates` and `future_covariates` arguments and currently run univariate (graceful fallback with a log warning) — the infrastructure is in place for model-level exogenous variable support.
+`run_statsforecast()` wraps `AutoETS`, `AutoTheta`, `SeasonalNaive` via StatsForecast. `run_all_models()` runs all five in sequence; individual failures are caught and logged without breaking the others.
 
 ### `ensemble.py`
-Inverse-sMAPE weighted combination of any set of `ModelForecast` objects. Weights are computed as `w_i = (1 / sMAPE_i) / Σ(1 / sMAPE_j)`. A floor of `_MIN_SMAPE = 1e-3` prevents division by zero for near-perfect models. All five arrays (`point_forecast`, `lo_80`, `hi_80`, `lo_90`, `hi_90`) are combined with the same weights.
+Inverse-sMAPE weighted combination of any set of `ModelForecast` objects:
+
+```
+w_i = (1 / sMAPE_i) / Σ(1 / sMAPE_j)
+```
+
+A floor of `1e-3` prevents division by zero for near-perfect models. All five arrays (`point_forecast`, `lo_80`, `hi_80`, `lo_90`, `hi_90`) are combined with the same weights.
 
 ### `backtest.py`
-Expanding-window cross-validation. Folds grow the training set forward in time. Covariate arrays are sliced at the same `train_end_idx` boundary as the target (no leakage). Metrics: MAE, RMSE, MAPE, sMAPE, MASE (relative to seasonal naïve baseline). Winner selected by lowest aggregate sMAPE.
+Expanding-window cross-validation. Folds grow the training set forward in time — more realistic for production deployments where all historical data is always available. Covariate arrays are sliced at the same `train_end_idx` boundary as the target (no future leakage). Metrics: MAE, RMSE, MAPE, sMAPE, MASE (vs. Seasonal Naïve). Winner selected by lowest aggregate sMAPE.
 
 ### `export.py`
-`openpyxl` 5-sheet XLSX workbook: Summary, Forecast, Backtest Metrics, Diagnostics, Raw Data. `results_log.csv` append for cross-run comparison.
+`openpyxl` 5-sheet XLSX workbook: Summary, Forecast, Backtest Metrics, Diagnostics, Raw Data. Results log (`results_log.csv`) append for cross-run comparison.
 
 ---
 
 ## Design Decisions
 
-**Singleton model loading.** Foundation models are loaded once at first request and kept in memory. Cold start: ~5s (Chronos on MPS), ~15s (TimesFM on CPU). Subsequent requests: ~200–500ms.
+**Singleton model loading** — Foundation models are loaded at first request and kept in memory. Subsequent requests are ~200–500ms. This trades memory for latency — acceptable for a single-user desktop tool.
 
-**Expanding-window CV.** Folds grow the training set forward in time rather than sliding a fixed window — more realistic for production deployments where all historical data is always available. Folds are built from the end and reversed to preserve chronological display order.
+**Expanding vs. sliding window** — Folds grow the training set forward rather than sliding a fixed window. This matches how a production system would actually retrain: with all available history.
 
-**sMAPE as winner-selection metric.** Symmetric, bounded [0, 200%], and defined when actuals contain zeros. Less sensitive to outlier actuals than standard MAPE.
+**sMAPE as winner-selection metric** — Symmetric, bounded [0, 200%], and defined when actuals contain zeros. Less sensitive to outlier actuals than MAPE.
 
-**MASE baseline = Seasonal Naïve.** The academic standard (Hyndman & Koehler 2006). MASE < 1 means the model outperforms naïve seasonal repetition.
+**MASE baseline = Seasonal Naïve** — The academic standard (Hyndman & Koehler 2006). MASE < 1 means the model outperforms naïve seasonal repetition.
 
-**Covariate graceful fallback.** All models accept covariate arguments in the API. Current models run univariate and log an info message when covariates are provided. The schema and pipeline infrastructure is complete for future model-level exogenous support.
+**Period override** — The diagnostics endpoint accepts `period_override: int | null`. This propagates to STL, forecastability scoring, and rolling stats — letting Lab users experiment with different seasonality hypotheses without modifying the frequency.
 
 ---
 
 ## Testing
 
 ```bash
-# Run all tests
+# All tests
 uv run pytest tests/ -v
 
-# Exclude slow model-inference tests
+# Skip slow model-inference tests
 uv run pytest tests/ -v --ignore=tests/test_forecasting.py --ignore=tests/test_backtest.py
 
 # Lint
 uv run ruff check src/ tests/
 ```
 
-| Test file | Tests | Coverage |
+| Test file | Count | Coverage |
 |---|---|---|
 | `test_health.py` | 1 | Health endpoint |
-| `test_datasets.py` | 23 | All 16 datasets, upload, column detection, covariate columns, new domains |
-| `test_diagnostics.py` | ~30 | STL, ACF/PACF, forecastability (all 5 dimensions), stationarity, outliers |
-| `test_ensemble.py` | 10 | Weight computation, weighted average, edge cases (zero sMAPE, missing models) |
-| `test_forecasting_covariates.py` | 12 | Covariate fold no-leakage, shape invariance, parser extraction, interpolation |
-| `test_preprocessing.py` | ~15 | Outlier removal, smoothing, differencing |
-| `test_forecasting.py` | — | Chronos-2 + StatsForecast inference (slow, requires model weights) |
+| `test_datasets.py` | 33 | 15 datasets · upload · column detection · covariate pipeline · domain checks |
+| `test_diagnostics.py` | 28 | STL · ACF/PACF · forecastability · stationarity · period override |
+| `test_ensemble.py` | 10 | Weight computation · weighted average · zero-sMAPE edge case |
+| `test_forecasting_covariates.py` | 12 | Fold no-leakage · shape invariance · parser extraction |
+| `test_preprocessing.py` | ~15 | Outlier removal · smoothing · differencing |
+| `test_forecasting.py` | — | Chronos-2 + StatsForecast inference (slow — requires weights) |
 | `test_backtest.py` | — | Rolling-origin CV end-to-end (slow) |
-| `test_export.py` | ~10 | XLSX sheet structure, results log CSV |
+| `test_export.py` | ~10 | XLSX sheet structure · results log |
 
 ---
 
@@ -210,14 +217,13 @@ uv run ruff check src/ tests/
 ```
 backend/
 ├── pyproject.toml
-├── uv.lock
 ├── scripts/
-│   └── generate_datasets.py      # Reproducible dataset generator (fixed numpy seeds)
+│   └── generate_datasets.py      Reproducible dataset generator (fixed numpy seeds)
 └── src/laplace/
-    ├── main.py                   # FastAPI app + CORS middleware
-    ├── config.py                 # Pydantic BaseSettings (data_dir, etc.)
+    ├── main.py                   FastAPI app + CORS middleware
+    ├── config.py                 Pydantic BaseSettings (data_dir, etc.)
     ├── models/
-    │   └── schemas.py            # All Pydantic schemas + FREQUENCY_MAP + FREQ_TO_PANDAS
+    │   └── schemas.py            All Pydantic schemas + FREQUENCY_MAP + FREQ_TO_PANDAS
     ├── routers/
     │   ├── datasets.py
     │   ├── diagnostics.py
@@ -226,12 +232,12 @@ backend/
     │   ├── forecast.py
     │   └── export.py
     ├── services/
-    │   ├── parser.py             # Parsing, validation, covariate extraction
-    │   ├── diagnostics.py        # STL, ACF, forecastability, stationarity, outliers
-    │   ├── preprocessing.py      # Outlier removal, smoothing, differencing
-    │   ├── forecasting.py        # Foundation model singletons + StatsForecast
-    │   ├── ensemble.py           # Inverse-sMAPE weighted combination
-    │   ├── backtest.py           # Expanding-window CV, metrics, winner selection
-    │   └── export.py             # XLSX workbook, results_log.csv
-    └── data/preloaded/           # 16 CSV datasets across 11 domains
+    │   ├── parser.py             Parsing · validation · covariate extraction
+    │   ├── diagnostics.py        STL · ACF · forecastability · stationarity · period override
+    │   ├── preprocessing.py      Outlier removal · smoothing · differencing
+    │   ├── forecasting.py        Foundation model singletons + StatsForecast
+    │   ├── ensemble.py           Inverse-sMAPE weighted combination
+    │   ├── backtest.py           Expanding-window CV · metrics · winner selection
+    │   └── export.py             XLSX workbook · results_log.csv
+    └── data/preloaded/           15 CSV datasets across 10 domains
 ```
