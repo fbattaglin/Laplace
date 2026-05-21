@@ -5,10 +5,20 @@ import { StepNav } from './StepNav'
 import { PreprocessingBanner } from './PreprocessingBanner'
 import laplaceLogo from '../../logo/laplace_logo.png'
 
+const LAB_FEATURES = [
+  { icon: '⚡', label: 'Ensemble forecast', desc: 'Inverse-sMAPE weighted combo of all 5 models' },
+  { icon: '⚙️', label: 'Backtest config', desc: 'Set folds, horizon, and selection metric' },
+  { icon: '🧹', label: 'Data Prep', desc: 'Outlier removal, smoothing, differencing' },
+  { icon: '📊', label: 'Covariate support', desc: 'Add exogenous variables to the forecast' },
+  { icon: '🎯', label: 'Calibration chart', desc: 'Prediction interval coverage per model' },
+  { icon: '🔬', label: 'Per-fold detail', desc: 'Expand backtest fold-by-fold breakdown' },
+]
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { displayMode, setDisplayMode, reset } = useAppStore()
   const queryClient = useQueryClient()
   const [confirming, setConfirming] = useState(false)
+  const [labHovered, setLabHovered] = useState(false)
 
   function handleReset() {
     queryClient.clear()
@@ -51,9 +61,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="w-px h-4 bg-surface" />
 
           {/* Segmented mode toggle */}
-          <div className="flex bg-surface rounded-lg p-0.5">
+          <div className="relative flex bg-surface rounded-lg p-0.5">
+            {/* Boardroom button */}
             <button
-              title="Business view — clean results, no statistical detail"
               onClick={() => setDisplayMode('boardroom')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                 displayMode === 'boardroom'
@@ -63,17 +73,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               Boardroom
             </button>
+
+            {/* Lab button — with flask icon + feature badge when inactive */}
             <button
-              title="Analyst view — full diagnostics, data prep, Lab controls"
-              onClick={() => setDisplayMode('lab')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              onClick={() => { setDisplayMode('lab'); setLabHovered(false) }}
+              onMouseEnter={() => setLabHovered(true)}
+              onMouseLeave={() => setLabHovered(false)}
+              className={`flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                 displayMode === 'lab'
-                  ? 'bg-white text-primary shadow-sm'
+                  ? 'bg-accent-purple/10 text-accent-purple shadow-sm'
                   : 'text-secondary hover:text-primary'
               }`}
             >
-              Lab
+              <span className={displayMode === 'lab' ? '' : 'opacity-50'}>⚗</span>
+              <span>Lab</span>
+              {displayMode === 'boardroom' && (
+                <span className="bg-accent-purple/10 text-accent-purple text-[9px] px-1 py-0.5 rounded font-semibold leading-none">
+                  {LAB_FEATURES.length}+
+                </span>
+              )}
             </button>
+
+            {/* Feature discovery popover — shown on Lab hover when in Boardroom */}
+            {displayMode === 'boardroom' && labHovered && (
+              <div
+                className="absolute top-full right-0 mt-2 w-72 bg-canvas border border-surface rounded-xl shadow-xl p-4 z-50"
+                onMouseEnter={() => setLabHovered(true)}
+                onMouseLeave={() => setLabHovered(false)}
+              >
+                <p className="text-xs font-semibold text-primary mb-3">Lab mode unlocks:</p>
+                <ul className="space-y-2">
+                  {LAB_FEATURES.map((f) => (
+                    <li key={f.label} className="flex items-start gap-2 text-xs text-secondary">
+                      <span className="text-accent-purple shrink-0 mt-px">{f.icon}</span>
+                      <span>
+                        <span className="font-medium text-primary">{f.label}</span>
+                        {' — '}{f.desc}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => { setDisplayMode('lab'); setLabHovered(false) }}
+                  className="mt-3 w-full py-1.5 bg-accent-purple text-white rounded-lg text-xs font-medium hover:bg-accent-purple/90 transition-colors"
+                >
+                  Switch to Lab →
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

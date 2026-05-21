@@ -8,6 +8,7 @@ import { BacktestChart } from './BacktestChart'
 import { BacktestConfigPanel } from './BacktestConfigPanel'
 import { CalibrationChart } from './CalibrationChart'
 import { FoldDetail } from './FoldDetail'
+import { LabNudge } from '../layout/LabNudge'
 
 export function ValidationScreen() {
   const { timeSeriesData, displayMode, backtestConfig } = useAppStore()
@@ -72,6 +73,8 @@ export function ValidationScreen() {
             : `Rolling-origin backtest: ${data.n_splits} folds, h=${data.horizon}. Winner by ${data.selection_metric}: ${data.winner}.`}
         </p>
       </div>
+
+      <LabNudge count={3} features={['Backtest config', 'Fold detail', 'Calibration chart']} />
 
       {displayMode === 'lab' && <BacktestConfigPanel />}
 

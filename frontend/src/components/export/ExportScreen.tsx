@@ -8,6 +8,7 @@ import { t } from '../../lib/copy'
 import { AnalysisSummary } from './AnalysisSummary'
 import { ReportBuilder } from './ReportBuilder'
 import { RunHistory } from './RunHistory'
+import { LabNudge } from '../layout/LabNudge'
 
 const DEFAULT_SECTIONS = new Set(['summary', 'backtest', 'forecast', 'diagnostics', 'raw_data'])
 
@@ -132,6 +133,8 @@ export function ExportScreen() {
             : 'Export XLSX report with section control, or download a flat CSV.'}
         </p>
       </div>
+
+      <LabNudge count={2} features={['Dimension bars', 'Win rate chart']} />
 
       {/* Analysis Summary — verdict banner + metric strip + dimension bars */}
       <AnalysisSummary

@@ -13,6 +13,7 @@ import { OutlierHighlight } from './OutlierHighlight'
 import { StationarityPanel } from './StationarityPanel'
 import { DataPrepPanel } from './DataPrepPanel'
 import { SeasonalityOverride } from './SeasonalityOverride'
+import { LabNudge } from '../layout/LabNudge'
 
 type Tab = 'overview' | 'decomposition' | 'distribution' | 'stability' | 'dataPrepLab'
 
@@ -81,6 +82,8 @@ export function DiagnosticsScreen() {
             : `STL decomposition, ACF/PACF, and forecastability analysis for "${timeSeriesData.name}" (n=${timeSeriesData.n_points}, freq=${timeSeriesData.frequency}).`}
         </p>
       </div>
+
+      <LabNudge count={2} features={['Data Prep', 'Seasonality override']} />
 
       {/* Tab navigation */}
       <div className="flex gap-1 bg-canvas rounded-xl p-1">

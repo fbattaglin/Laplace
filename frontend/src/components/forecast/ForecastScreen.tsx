@@ -11,6 +11,7 @@ import type { Frequency, ForecastResponse, ModelForecast } from '../../types'
 import { ForecastChart } from './ForecastChart'
 import { EnsembleWeights } from './EnsembleWeights'
 import { FutureCovariatesPanel } from './FutureCovariatesPanel'
+import { LabNudge } from '../layout/LabNudge'
 
 // ─── CSV export helpers ───────────────────────────────────────────────────────
 
@@ -143,6 +144,8 @@ export function ForecastScreen() {
             : 'Produce point forecasts with 80% and 90% prediction intervals.'}
         </p>
       </div>
+
+      <LabNudge count={2} features={['Ensemble model', 'Future covariates']} />
 
       <div className="bg-surface rounded-xl p-6">
         <div className="flex flex-wrap gap-6 items-end">
