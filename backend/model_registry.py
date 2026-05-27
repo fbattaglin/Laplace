@@ -22,10 +22,10 @@ class ModelRegistry:
 
     def get_chronos(self):
         if self.chronos_pipeline is None:
-            print("Lazy loading Chronos-T5-Small into registry...")
-            from chronos import ChronosPipeline
-            self.chronos_pipeline = ChronosPipeline.from_pretrained(
-                "amazon/chronos-t5-small", 
+            print("Lazy loading amazon/chronos-2 into registry...")
+            from chronos import BaseChronosPipeline
+            self.chronos_pipeline = BaseChronosPipeline.from_pretrained(
+                "amazon/chronos-2", 
                 device_map=self.device, 
                 torch_dtype=torch.float32
             )
@@ -66,6 +66,41 @@ class ModelRegistry:
         mean_pred = np.quantile(samples, 0.5, axis=0)
         lower_pred = np.quantile(samples, 0.1, axis=0)
         upper_pred = np.quantile(samples, 0.9, axis=0)
+        return mean_pred, lower_pred, upper_pred
+
+    def predict_chronos2(self, y: np.ndarray, h: int, past_covariates: np.ndarray = None):
+        pipeline = self.get_chronos()
+        # Dual-Context Truncation: 1024
+        y_context = y[-1024:] if len(y) > 1024 else y
+        
+        # Build payload for chronos-2
+        payload = {"target": y_context}
+        
+        if past_covariates is not None:
+            past_cov_context = past_covariates[-1024:] if len(past_covariates) > 1024 else past_covariates
+            # Create dummy names for covariates to map into dict
+            num_covs = past_cov_context.shape[1] if len(past_cov_context.shape) > 1 else 1
+            if len(past_cov_context.shape) == 1:
+                past_cov_context = past_cov_context.reshape(-1, 1)
+            
+            cov_dict = {}
+            for i in range(num_covs):
+                cov_dict[f"cov_{i}"] = past_cov_context[:, i]
+                
+            payload["past_covariates"] = cov_dict
+            
+        quantiles, mean = pipeline.predict_quantiles([payload], prediction_length=h, quantile_levels=[0.1, 0.5, 0.9])
+        
+        # output shapes: quantiles (batch, h, 3), mean (batch, h) or list of tensors
+        if isinstance(mean, list):
+            mean_pred = mean[0][0].numpy()
+            lower_pred = quantiles[0][0, :, 0].numpy()
+            upper_pred = quantiles[0][0, :, 2].numpy()
+        else:
+            mean_pred = mean[0].numpy()
+            lower_pred = quantiles[0, :, 0].numpy()
+            upper_pred = quantiles[0, :, 2].numpy()
+        
         return mean_pred, lower_pred, upper_pred
 
     def predict_timesfm(self, y: np.ndarray, h: int):

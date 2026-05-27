@@ -1,11 +1,13 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Database, CheckCircle, LineChart, Download, Check, RotateCcw } from 'lucide-react';
+import { Activity, Database, CheckCircle, LineChart, Download, Check, RotateCcw, Briefcase, FlaskConical, ClipboardList } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
+import { ModeProvider, useMode } from '../../context/ModeContext';
 
-export default function Layout() {
+function LayoutInner() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { setMode, isLab } = useMode();
   const [hasDataset, setHasDataset] = useState(false);
   const [hasWinner, setHasWinner] = useState(false);
 
@@ -33,6 +35,10 @@ export default function Layout() {
       localStorage.removeItem('laplace_winner_is_override');
       localStorage.removeItem('laplace_validation_metrics');
       localStorage.removeItem('laplace_horizon');
+      localStorage.removeItem('laplace_covariates');
+      localStorage.removeItem('laplace_transforms');
+      localStorage.removeItem('laplace_excluded_indices');
+      localStorage.removeItem('laplace_ensemble_config');
       sessionStorage.removeItem('laplace_forecast_data');
       navigate('/input');
     }
@@ -103,8 +109,49 @@ export default function Layout() {
             </div>
           </div>
 
-          {/* Actions Zone */}
-          <div className="flex items-center justify-end flex-shrink-0 w-32 mt-2">
+          {/* Actions Zone — Mode Toggle + Reset */}
+          <div className="flex items-center gap-3 flex-shrink-0 mt-2">
+            {/* Run History (Lab Only) */}
+            {isLab && (
+              <button
+                onClick={() => navigate('/runs')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-base-secondary hover:text-[#6366F1] hover:bg-[#6366F1]/10 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-colors"
+                title="Run History"
+              >
+                <ClipboardList size={14} />
+                <span className="hidden lg:inline">Run History</span>
+              </button>
+            )}
+
+            {/* Mode Toggle */}
+            <div className="flex items-center bg-base-surface rounded-full p-0.5 border border-base-secondary/20">
+              <button
+                onClick={() => setMode('boardroom')}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-all duration-300",
+                  !isLab 
+                    ? "bg-base-primary text-white shadow-sm" 
+                    : "text-base-secondary hover:text-base-primary"
+                )}
+              >
+                <Briefcase size={13} />
+                <span className="hidden lg:inline">Boardroom</span>
+              </button>
+              <button
+                onClick={() => setMode('lab')}
+                className={clsx(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-all duration-300",
+                  isLab 
+                    ? "bg-[#6366F1] text-white shadow-sm shadow-[#6366F1]/20" 
+                    : "text-base-secondary hover:text-base-primary"
+                )}
+              >
+                <FlaskConical size={13} />
+                <span className="hidden lg:inline">Lab</span>
+              </button>
+            </div>
+
+            {/* Reset */}
             <button
               onClick={handleReset}
               title="Start New Project / Clear Data"
@@ -121,5 +168,13 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+export default function Layout() {
+  return (
+    <ModeProvider>
+      <LayoutInner />
+    </ModeProvider>
   );
 }

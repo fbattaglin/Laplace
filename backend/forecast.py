@@ -7,7 +7,7 @@ from model_registry import registry
 import os
 
 CHRONOS_MODELS = {
-    "Chronos-T5-Small": "amazon/chronos-t5-small",
+    "Chronos-2": "amazon/chronos-t5-small",
     "Chronos-Bolt-Small": "amazon/chronos-bolt-small"
 }
 
@@ -17,16 +17,77 @@ def generate_future_dates(last_date: pd.Timestamp, freq_str: str, h: int) -> pd.
     except:
         return pd.date_range(start=last_date, periods=h+1, freq='D')[1:]
 
-def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: str, h: int = 12):
+def _run_single_model(model_name: str, y: np.ndarray, h: int, period: int, freq_str: str, df: pd.DataFrame, date_col: str, covariate_cols: list = None):
+    """Run a single model and return {"mean": array, "lower": array, "upper": array} or None."""
+    if model_name in CHRONOS_MODELS:
+        past_covariates = None
+        if covariate_cols:
+            try:
+                from covariates import align_covariates
+                cov_data = align_covariates(df, h, covariate_cols)
+                if cov_data["past_covariates"] is not None:
+                    # _run_single_model doesn't exclude test horizon if y is already y_train, 
+                    # but wait, here y is the full array if not using holdout?
+                    # Ah, in forecast.py, y is the full array so we pass all past_covariates
+                    past_covariates = cov_data["past_covariates"]
+            except Exception as e:
+                print(f"Failed to align covariates: {e}")
+                
+        mean_p, lower_p, upper_p = registry.predict_chronos2(y, h, past_covariates=past_covariates)
+        return {"mean": mean_p, "lower": lower_p, "upper": upper_p}
+    elif model_name == "TimesFM-200M":
+        mean_p, lower_p, upper_p = registry.predict_timesfm(y, h)
+        return {"mean": mean_p, "lower": lower_p, "upper": upper_p}
+    else:
+        model_map = {
+            'SeasonalNaive': SeasonalNaive(season_length=period),
+            'ETS': AutoETS(season_length=period),
+            'Theta': AutoTheta(season_length=period),
+            'ARIMA': AutoARIMA(season_length=period),
+        }
+        sf_model = model_map.get(model_name)
+        if sf_model is None:
+            return None
+        df_train = pd.DataFrame({'unique_id': '1', 'ds': df[date_col], 'y': y})
+        sf = StatsForecast(models=[sf_model], freq=freq_str, n_jobs=1)
+        sf.fit(df_train)
+        forecasts = sf.predict(h=h, level=[80])
+        col_prefix = model_name
+        if model_name not in forecasts.columns:
+            if model_name == 'ETS': col_prefix = 'AutoETS'
+            elif model_name == 'Theta': col_prefix = 'AutoTheta'
+            elif model_name == 'ARIMA': col_prefix = 'AutoARIMA'
+        return {
+            "mean": forecasts[col_prefix].values,
+            "lower": forecasts[f'{col_prefix}-lo-80'].values,
+            "upper": forecasts[f'{col_prefix}-hi-80'].values,
+        }
+
+def run_forecast(
+    df: pd.DataFrame, 
+    date_col: str, 
+    target_col: str, 
+    model_name: str, 
+    h: int = 12, 
+    covariate_cols: list = None,
+    cleaning_config: list = None,
+    excluded_anomalies: list = None
+):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values(date_col)
     
-    y = df[target_col].astype(float).interpolate(method='linear').bfill().ffill().values
-    dates = df[date_col].values
+    # Apply preprocessing pipeline
+    from data_cleaning import preprocess_dataframe_for_modeling
+    df_clean, variance_params = preprocess_dataframe_for_modeling(df, date_col, target_col, cleaning_config, excluded_anomalies)
+    
+    y = df_clean[target_col].astype(float).values
+    dates = df_clean[date_col].values
     n = len(y)
     
-    inferred_freq = pd.infer_freq(df[date_col])
+    has_variance_transform = (variance_params and variance_params.get("method") != "none")
+    
+    inferred_freq = pd.infer_freq(df_clean[date_col])
     freq_str = inferred_freq if inferred_freq else 'D'
     
     period = 12
@@ -47,9 +108,56 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
     
     device = "mps" if torch.backends.mps.is_available() else "cpu"
     
-    if model_name in CHRONOS_MODELS:
+    if model_name == "Ensemble":
+        # Run component models and combine with saved weights
+        from ensemble import build_ensemble_forecast
+        
+        component_models = ['ARIMA', 'ETS', 'Chronos-2']
+        ensemble_weights = None
+        
         try:
-            mean_pred, lower_pred, upper_pred = registry.predict_chronos(y, h)
+            import json
+            model_forecasts = {}
+            for comp_name in component_models:
+                try:
+                    comp_result = _run_single_model(comp_name, y, h, period, freq_str, df_clean, date_col, covariate_cols)
+                    if comp_result is not None:
+                        model_forecasts[comp_name] = comp_result
+                except Exception as e:
+                    print(f"Ensemble component {comp_name} failed: {e}")
+            
+            if not model_forecasts:
+                raise ValueError("No component models produced forecasts for ensemble")
+            
+            if ensemble_weights is None:
+                n_models = len(model_forecasts)
+                ensemble_weights = {name: 1.0 / n_models for name in model_forecasts}
+            
+            mean_arr, lower_arr, upper_arr = build_ensemble_forecast(
+                model_forecasts, ensemble_weights, h
+            )
+            mean_pred = mean_arr.tolist()
+            lower_pred = lower_arr.tolist()
+            upper_pred = upper_arr.tolist()
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            print(f"Ensemble forecast error: {tb}")
+            raise ValueError(f"Ensemble forecast failed: {e}")
+            
+    elif model_name in CHRONOS_MODELS:
+        try:
+            past_covariates = None
+            if covariate_cols:
+                try:
+                    from covariates import align_covariates
+                    cov_data = align_covariates(df_clean, h, covariate_cols)
+                    if cov_data["past_covariates"] is not None:
+                        past_covariates = cov_data["past_covariates"]
+                except Exception as e:
+                    print(f"Failed to align covariates: {e}")
+                    
+            mean_pred, lower_pred, upper_pred = registry.predict_chronos2(y, h, past_covariates=past_covariates)
             mean_pred = mean_pred.tolist()
             lower_pred = lower_pred.tolist()
             upper_pred = upper_pred.tolist()
@@ -85,7 +193,7 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
         
         df_train = pd.DataFrame({
             'unique_id': '1',
-            'ds': df[date_col],
+            'ds': df_clean[date_col],
             'y': y
         })
         
@@ -102,6 +210,24 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
         mean_pred = forecasts[col_prefix].values.tolist()
         lower_pred = forecasts[f'{col_prefix}-lo-80'].values.tolist()
         upper_pred = forecasts[f'{col_prefix}-hi-80'].values.tolist()
+
+    # Invert variance transform back to original scale if needed
+    y_original = y.copy()
+    mean_original = np.array(mean_pred)
+    lower_original = np.array(lower_pred)
+    upper_original = np.array(upper_pred)
+    
+    if has_variance_transform:
+        from data_cleaning import inverse_variance_transform
+        y_original = inverse_variance_transform(y, variance_params)
+        mean_original = inverse_variance_transform(mean_original, variance_params)
+        lower_original = inverse_variance_transform(lower_original, variance_params)
+        upper_original = inverse_variance_transform(upper_original, variance_params)
+        
+    mean_pred = mean_original.tolist()
+    lower_pred = lower_original.tolist()
+    upper_pred = upper_original.tolist()
+    y_tolist = y_original.tolist()
 
     log_data = []
     for i in range(h):
@@ -123,8 +249,8 @@ def run_forecast(df: pd.DataFrame, date_col: str, target_col: str, model_name: s
         "model": model_name,
         "horizon": h,
         "history": {
-            "dates": df[date_col].astype(str).tolist(),
-            "actual": y.tolist()
+            "dates": df_clean[date_col].astype(str).tolist(),
+            "actual": y_tolist
         },
         "forecast": {
             "dates": future_dates,

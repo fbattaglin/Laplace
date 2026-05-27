@@ -153,14 +153,10 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
     # 3. Anomaly Detection (Isolation Forest)
     anomalies = []
     try:
-        iso = IsolationForest(contamination=0.05, random_state=42)
-        y_array = np.array(y).reshape(-1, 1)
-        preds = iso.fit_predict(y_array)
-        anomaly_indices = np.where(preds == -1)[0]
-        anomalies = anomaly_indices.tolist()
+        from anomaly import detect_anomalies_isolation_forest
+        anomalies = detect_anomalies_isolation_forest(np.array(y), threshold=0.05)
     except Exception as e:
         print(f"Anomaly detection error: {e}")
-        
     # 4. Trend Changepoints (Ruptures Binseg)
     changepoints = []
     try:
@@ -196,6 +192,14 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
             "is_stationary": False
         }
 
+    # 6. Covariates Analysis
+    covariates = []
+    try:
+        from covariates import analyze_covariates
+        covariates = analyze_covariates(df, date_col, target_col)
+    except Exception as e:
+        print(f"Failed to analyze covariates in diagnostics: {e}")
+
     dates = df.index.astype(str).tolist()
 
     return {
@@ -217,5 +221,6 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         },
         "adf_test": adf_test,
         "acf": acf_vals,
-        "pacf": pacf_vals
+        "pacf": pacf_vals,
+        "covariates": covariates
     }

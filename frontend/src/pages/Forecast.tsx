@@ -1,35 +1,30 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Rocket, ChevronRight, TrendingUp, TrendingDown, Minus, ShieldAlert, BarChart2, Activity } from 'lucide-react';
+import { AlertTriangle, Rocket, ChevronRight, TrendingUp, TrendingDown, Minus, ShieldAlert, BarChart2, Activity, Printer } from 'lucide-react';
 import { Line, Area, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { runForecast, type ForecastRequest, type ForecastResponse } from '../lib/api';
 import clsx from 'clsx';
+import { useMode } from '../context/ModeContext';
 
 const MODEL_COLORS: Record<string, string> = {
-  'Chronos-T5-Small': '#0066FF',
+  'Chronos-2': '#0066FF',
   'TimesFM-200M': '#34A853',
   'AutoARIMA': '#9D00FF',
   'ARIMA': '#9D00FF',
   'AutoETS': '#FF6B00',
   'ETS': '#FF6B00',
   'Theta': '#FFC700',
-  'SeasonalNaive': '#FF2A3A'
+  'SeasonalNaive': '#FF2A3A',
+  'Ensemble': '#06B6D4'
 };
 
 interface ModelMetrics { model: string; sMAPE: number; MASE: number; RMSE: number; }
 
-function fmt(n: number, decimals = 0): string {
-  if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (Math.abs(n) >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-  return n.toFixed(decimals);
-}
+const fmt = (num: number, dec = 0) => num.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
-function pct(a: number, b: number): string {
-  if (b === 0) return '—';
-  return ((a - b) / Math.abs(b) * 100).toFixed(1) + '%';
-}
 
 export default function Forecast() {
+  const { isLab } = useMode();
   const [config, setConfig] = useState<ForecastRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +55,33 @@ export default function Forecast() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const reqConfig = { ...parsed, model_name: winner, horizon };
+        
+        // Load pre-processing configs from localStorage
+        let cleaning_config = undefined;
+        let excluded_anomalies = undefined;
+        
+        const savedClean = localStorage.getItem('laplace_clean_config');
+        if (savedClean) {
+          try {
+            cleaning_config = JSON.parse(savedClean);
+          } catch (_) {}
+        }
+        
+        const savedExcluded = localStorage.getItem('laplace_excluded_anomalies');
+        if (savedExcluded) {
+          try {
+            excluded_anomalies = JSON.parse(savedExcluded);
+          } catch (_) {}
+        }
+
+        const reqConfig = { 
+          ...parsed, 
+          model_name: winner, 
+          horizon,
+          covariate_cols: parsed.covariate_cols || [],
+          cleaning_config,
+          excluded_anomalies
+        };
         setConfig(reqConfig);
         loadForecast(reqConfig);
       } catch (e) {
@@ -121,12 +142,11 @@ export default function Forecast() {
 
   // ── Derived Insights ────────────────────────────────────────────────────
   const lastActual = data.history.actual[data.history.actual.length - 1];
-  const firstForecast = data.forecast.mean[0];
   const lastForecast = data.forecast.mean[data.forecast.mean.length - 1];
   const totalChange = lastForecast - lastActual;
   const totalChangePct = lastActual !== 0 ? (totalChange / Math.abs(lastActual)) * 100 : 0;
 
-  const avgCI = data.forecast.mean.reduce((acc, v, i) => {
+  const avgCI = data.forecast.mean.reduce((acc, _, i) => {
     return acc + (data.forecast.upper[i] - data.forecast.lower[i]);
   }, 0) / data.forecast.mean.length;
   const avgCIPct = data.forecast.mean.reduce((acc, v) => acc + Math.abs(v), 0) / data.forecast.mean.length;
@@ -177,6 +197,17 @@ export default function Forecast() {
             )}
           </p>
         </div>
+        {!isLab && (
+          <div className="no-print">
+            <button 
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-base-primary text-white rounded-lg font-medium hover:bg-base-primary/90 transition-colors shadow-sm"
+            >
+              <Printer size={18} />
+              <span>Print Report</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Override warning */}
@@ -223,7 +254,7 @@ export default function Forecast() {
             <Tooltip
               contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               labelStyle={{ fontWeight: 'bold', marginBottom: '4px', color: '#111111' }}
-              formatter={(value: any, name: string) => {
+              formatter={(value: any, name: any) => {
                 if (name === 'Forecast') return [fmt(value, 1), name];
                 if (name === 'Actual') return [fmt(value, 1), name];
                 return [value, name];

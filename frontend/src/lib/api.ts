@@ -11,8 +11,9 @@ const extractError = (errorData: any, defaultMsg: string): string => {
 export interface DatasetInfo {
   name: string;
   description: string;
-  problem_statement?: string;
-  tags?: string[];
+  problem_statement: string;
+  tags: string[];
+  has_covariates?: boolean;
 }
 
 export interface DatasetResponse {
@@ -22,6 +23,11 @@ export interface DatasetResponse {
   total_rows: number;
   preview_data: any[];   // first 15 rows for the table
   chart_data: any[];     // up to 300 evenly-sampled rows for the full-fidelity chart
+  covariate_candidates?: Array<{
+    column: string;
+    correlation: number;
+    suggested_type: string;
+  }>;
 }
 
 export async function fetchDatasets() {
@@ -45,6 +51,57 @@ export async function uploadDataset(file: File): Promise<DatasetResponse> {
     body: formData,
   });
   if (!res.ok) throw new Error("Failed to upload dataset");
+  return res.json();
+}
+
+export interface CleanRequest {
+  dataset_type: string;
+  dataset_name: string;
+  date_col: string;
+  target_col: string;
+  config: any[];
+  excluded_anomalies?: number[];
+}
+
+export interface CleanResponse {
+  cleaned_data: number[];
+  variance_params: any;
+  steps_log: string[];
+}
+
+export async function cleanData(req: CleanRequest): Promise<CleanResponse> {
+  const res = await fetch(`${API_BASE}/clean`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to clean data");
+  return res.json();
+}
+
+export interface AnomalyRequest {
+  dataset_type: string;
+  dataset_name: string;
+  date_col: string;
+  target_col: string;
+  method?: string;
+  threshold?: number;
+}
+
+export interface AnomalyResponse {
+  engine: string;
+  threshold: number;
+  count: number;
+  anomalies: any[];
+}
+
+export async function detectAnomalies(req: AnomalyRequest): Promise<AnomalyResponse> {
+  const res = await fetch(`${API_BASE}/anomalies/detect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error("Failed to detect anomalies");
   return res.json();
 }
 
@@ -75,7 +132,7 @@ export interface DiagnosticsResponse {
     p_value: number;
     test_statistic: number;
   };
-  anomalies: number[];
+  anomalies: any[];
   changepoints: number[];
   stl: {
     observed: number[];
@@ -91,6 +148,11 @@ export interface DiagnosticsResponse {
   };
   acf: number[];
   pacf: number[];
+  covariates?: Array<{
+    column: string;
+    correlation: number;
+    suggested_type: string;
+  }>;
 }
 
 export async function runDiagnostics(req: DiagnosticsRequest): Promise<DiagnosticsResponse> {
@@ -110,6 +172,9 @@ export interface ValidationRequest {
   target_col: string;
   horizon?: number;
   selected_models?: string[];
+  covariate_cols?: string[];
+  cleaning_config?: any[];
+  excluded_anomalies?: number[];
 }
 
 export interface ModelMetrics {
@@ -153,6 +218,9 @@ export interface ForecastRequest {
   target_col: string;
   model_name: string;
   horizon?: number;
+  covariate_cols?: string[];
+  cleaning_config?: any[];
+  excluded_anomalies?: number[];
 }
 
 export interface ForecastResponse {

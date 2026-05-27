@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Download, FileText, Code2, AlertTriangle, Settings2, CheckCircle2 } from 'lucide-react';
 import type { ForecastResponse } from '../lib/api';
-import clsx from 'clsx';
 
 export default function Export() {
   const [data, setData] = useState<ForecastResponse | null>(null);

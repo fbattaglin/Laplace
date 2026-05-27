@@ -89,6 +89,15 @@ def process_dataframe(df: pd.DataFrame) -> dict:
         indices = np_h.linspace(0, n - 1, 300, dtype=int)
         chart_rows = df_filled.iloc[indices].to_dict(orient="records")
     
+    # Get covariate candidates if target is found
+    covariate_candidates = []
+    if date_col and target_col:
+        try:
+            from covariates import analyze_covariates
+            covariate_candidates = analyze_covariates(df, date_col, target_col)
+        except Exception as e:
+            print(f"Failed to analyze covariates: {e}")
+
     return {
         "columns": columns,
         "suggested_date_col": date_col,
@@ -96,4 +105,5 @@ def process_dataframe(df: pd.DataFrame) -> dict:
         "total_rows": len(df),
         "preview_data": df_filled.head(15).to_dict(orient="records"),
         "chart_data": chart_rows,
+        "covariate_candidates": covariate_candidates,
     }

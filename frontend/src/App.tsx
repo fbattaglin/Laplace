@@ -5,6 +5,7 @@ import Diagnostics from './pages/Diagnostics';
 import Validation from './pages/Validation';
 import Forecast from './pages/Forecast';
 import Export from './pages/Export';
+import RunComparison from './pages/RunComparison';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="validation" element={<Validation />} />
           <Route path="forecast" element={<Forecast />} />
           <Route path="export" element={<Export />} />
+          <Route path="runs" element={<RunComparison />} />
         </Route>
       </Routes>
     </Router>

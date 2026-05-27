@@ -1,34 +1,42 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, AlertTriangle, CheckCircle, Target, ChevronRight } from 'lucide-react';
+import { Trophy, AlertTriangle, CheckCircle, Target, ChevronRight, ChevronDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { runValidation, type ValidationRequest, type ValidationResponse } from '../lib/api';
 import clsx from 'clsx';
+import { useMode } from '../context/ModeContext';
 
 const MODEL_COLORS: Record<string, string> = {
-  'Chronos-T5-Small': '#0066FF',
+  'Chronos-2': '#0066FF',
   'TimesFM-200M': '#34A853',
   'ARIMA': '#9D00FF',
   'ETS': '#FF6B00',
   'Theta': '#FFC700',
-  'SeasonalNaive': '#FF2A3A'
+  'SeasonalNaive': '#FF2A3A',
+  'Ensemble': '#06B6D4'
 };
 
 export default function Validation() {
+  const { isLab } = useMode();
   const [config, setConfig] = useState<ValidationRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ValidationResponse | null>(null);
   
-  const [recommendedWinner, setRecommendedWinner] = useState<string | null>(null);
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
-
+  const [recommendedWinner, setRecommendedWinner] = useState<string | null>(null);
+  const [hiddenModels, setHiddenModels] = useState<string[]>([]);
+  const [isEnsembleConfigOpen, setIsEnsembleConfigOpen] = useState(false);
   const [setupMode, setSetupMode] = useState(true);
   const [horizon, setHorizon] = useState(12);
   const [selectedModels, setSelectedModels] = useState<string[]>([
-    'SeasonalNaive', 'AutoETS', 'AutoARIMA', 'Chronos-T5-Small', 'TimesFM-200M'
+    'Chronos-2',
+    'TimesFM-200M',
+    'AutoARIMA',
+    'AutoETS',
+    'AutoTheta',
+    'SeasonalNaive'
   ]);
-  const [hiddenModels, setHiddenModels] = useState<string[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('laplace_dataset');
@@ -43,9 +51,35 @@ export default function Validation() {
 
   const handleRunValidation = () => {
     if (!config) return;
+    
+    // Load pre-processing configs from localStorage
+    let cleaning_config = undefined;
+    let excluded_anomalies = undefined;
+    
+    const savedClean = localStorage.getItem('laplace_clean_config');
+    if (savedClean) {
+      try {
+        cleaning_config = JSON.parse(savedClean);
+      } catch (_) {}
+    }
+    
+    const savedExcluded = localStorage.getItem('laplace_excluded_anomalies');
+    if (savedExcluded) {
+      try {
+        excluded_anomalies = JSON.parse(savedExcluded);
+      } catch (_) {}
+    }
+
     localStorage.setItem('laplace_horizon', String(horizon));
     setSetupMode(false);
-    loadValidation({ ...config, horizon, selected_models: selectedModels });
+    loadValidation({ 
+      ...config, 
+      horizon, 
+      selected_models: selectedModels,
+      covariate_cols: config.covariate_cols || [],
+      cleaning_config,
+      excluded_anomalies
+    });
   };
 
   const handleLegendClick = (e: any) => {
@@ -96,7 +130,7 @@ export default function Validation() {
       { id: 'AutoARIMA', label: 'AutoARIMA (SOTA Classic)', type: 'statistical' },
       { id: 'AutoETS', label: 'AutoETS (Exponential Smoothing)', type: 'statistical' },
       { id: 'SeasonalNaive', label: 'Seasonal Naive (Baseline)', type: 'statistical' },
-      { id: 'Chronos-T5-Small', label: 'Chronos-T5-Small (Amazon FM)', type: 'foundation' },
+      { id: 'Chronos-2', label: 'Chronos-2 (Amazon FM)', type: 'foundation' },
       { id: 'TimesFM-200M', label: 'TimesFM-200M (Google FM)', type: 'foundation' }
     ];
 
@@ -248,12 +282,16 @@ export default function Validation() {
               const isWinner = idx === 0;
               const color = MODEL_COLORS[m.model] || '#111111';
               
+              const isEnsemble = m.model === 'Ensemble';
+              
               return (
                 <div 
                   key={m.model} 
                   className={clsx(
                     "p-4 rounded-xl border relative overflow-hidden transition-all",
-                    isWinner ? "border-accent-pulse bg-white shadow-sm" : "border-base-secondary/20 bg-white"
+                    isWinner ? "border-accent-pulse bg-white shadow-sm" : 
+                    isEnsemble ? "border-cyan-400/50 bg-cyan-50/20 border-dashed" :
+                    "border-base-secondary/20 bg-white"
                   )}
                 >
                   {isWinner && (
@@ -266,6 +304,11 @@ export default function Validation() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                       <h3 className="font-bold text-base-primary">{m.model}</h3>
+                      {isEnsemble && (
+                        <span className="text-[9px] uppercase tracking-wider font-semibold text-cyan-600 bg-cyan-100 px-1.5 py-0.5 rounded-full">
+                          Weighted Avg
+                        </span>
+                      )}
                     </div>
                     <input 
                       type="radio"
@@ -298,6 +341,15 @@ export default function Validation() {
                       <span className="font-semibold">{m.RMSE.toFixed(1)}</span>
                     </div>
                   </div>
+
+                  {/* Show component models for Ensemble */}
+                  {isEnsemble && (m as any).component_models && (
+                    <div className="mt-2 pt-2 border-t border-cyan-200/50">
+                      <span className="text-[10px] text-base-secondary">
+                        Components: {(m as any).component_models.join(' + ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -378,6 +430,78 @@ export default function Validation() {
       </div>
 
       <div className="flex flex-col items-end pt-8 pb-4">
+        {/* Lab-only Ensemble Configuration Panel */}
+        {isLab && (
+          <div className="w-full mb-8">
+            <div className="border-l-[3px] border-[#6366F1] bg-[#6366F1]/5 rounded-r-xl overflow-hidden shadow-sm">
+              <button 
+                onClick={() => setIsEnsembleConfigOpen(!isEnsembleConfigOpen)}
+                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#6366F1]/10 transition-colors"
+              >
+                <div>
+                  <h3 className="font-bold flex items-center gap-2 text-base-primary">
+                    <span className="text-xl">📊</span> ENSEMBLE CONFIGURATION
+                  </h3>
+                  <p className="text-sm text-base-secondary mt-1">
+                    Ensemble: weighted average of top-3 models (auto)
+                  </p>
+                </div>
+                <ChevronDown 
+                  className={clsx("text-base-secondary transition-transform duration-300", isEnsembleConfigOpen ? "rotate-180" : "")} 
+                />
+              </button>
+              
+              <div 
+                className={clsx(
+                  "overflow-hidden transition-all duration-300 ease-in-out",
+                  isEnsembleConfigOpen ? "max-h-[500px] opacity-100 border-t border-[#6366F1]/10" : "max-h-0 opacity-0"
+                )}
+              >
+                <div className="p-5 bg-white">
+                  <h4 className="text-xs font-bold text-base-secondary uppercase tracking-wider mb-3">Model Weights</h4>
+                  <div className="space-y-3">
+                    {data.metrics.find(m => m.model === 'Ensemble') ? (
+                      Object.entries((data.metrics.find(m => m.model === 'Ensemble') as any).weights || {}).map(([model, weight]: [string, any]) => (
+                        <div key={model} className="flex items-center gap-4 text-sm">
+                          <div className="w-32 font-semibold">{model}</div>
+                          <div className="w-24 text-base-secondary text-xs">
+                            sMAPE: {data.metrics.find(m => m.model === model)?.sMAPE}%
+                          </div>
+                          <div className="w-24 font-mono text-xs">
+                            weight: {weight.toFixed(2)}
+                          </div>
+                          <div className="flex-1 bg-base-surface rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-[#6366F1] h-full rounded-full" 
+                              style={{ width: `${weight * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-base-secondary italic">No ensemble data available.</p>
+                    )}
+                    
+                    <div className="pt-4 mt-2 border-t border-base-surface flex items-center gap-4">
+                      <span className="text-sm font-semibold">Strategy:</span>
+                      <div className="flex items-center bg-base-surface rounded-lg p-1">
+                        <button className="px-3 py-1.5 text-xs font-medium bg-white shadow-sm rounded-md">Auto (inverse-sMAPE)</button>
+                        <button className="px-3 py-1.5 text-xs font-medium text-base-secondary hover:text-base-primary">Equal</button>
+                        <button className="px-3 py-1.5 text-xs font-medium text-base-secondary hover:text-base-primary">Custom</button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-5 p-3 bg-base-surface rounded-lg text-xs text-base-secondary flex items-start gap-2">
+                    <span className="text-[#6366F1] font-bold">ℹ</span>
+                    <p>Ensemble always appears in the leaderboard above. This panel allows tweaking its calculation strategy in Lab mode.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {selectedWinner && recommendedWinner && selectedWinner !== recommendedWinner && (
           <div className="mb-4 flex items-center gap-3 p-4 bg-accent-warning/10 border border-accent-warning/30 rounded-xl max-w-2xl w-full">
             <AlertTriangle className="text-accent-warning shrink-0" size={24} />

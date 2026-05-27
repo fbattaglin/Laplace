@@ -15,9 +15,11 @@ Named after [Laplace's Demon](https://en.wikipedia.org/wiki/Laplace%27s_demon), 
 Most forecasting tools are either too simple (ignoring confidence intervals and signal validation) or too complex (requiring 50 lines of Python just to see a trend). Laplace is built differently:
 
 - **Smart Heuristics & Real-World Scenarios:** Drop a CSV or select from our hardcore benchmark suite (S&P 500, VIX, Walmart M5 Demand, National Grid). Laplace auto-detects temporal indices and targets.
-- **The Principal Data Analyst Lab (EDA):** We don't just fit a model and hope for the best. The Diagnostics engine decomposes the signal (STL), calculates Autocorrelation (ACF/PACF), flags **Anomalies** (Isolation Forest), identifies **Trend Changepoints** (Ruptures), computes heavy-tailed statistics (Skewness, Kurtosis), and generates a **Forecastability Score** ($R^2$ of Trend+Seasonality over Residuals).
-- **Foundation Models vs. The Classics:** Automatically backtest `google/timesfm-1.0-200m`, `amazon/chronos-bolt-base`, `AutoETS`, and `AutoTheta` using a rolling-origin validation engine. PyTorch automatically leverages Apple MPS acceleration if available.
-- **Export Studio:** The winning model generates future quantiles (80% Confidence Intervals) ready for the boardroom. Customize your CSV export, include/exclude historical data, and get an instant Python Pandas snippet to reproduce the exact visualization in your Jupyter Notebook.
+- **The Principal Data Analyst Lab (EDA):** Decompose the signal (STL), calculate Autocorrelation (ACF/PACF), compute heavy-tailed statistics (Skewness, Kurtosis), and identify Trend Changepoints (Ruptures). Seamlessly toggle between **Boardroom Didactics** (business-friendly, value-driven copy) and **Lab Didactics** (uncompromising, hardcore mathematical explanations) across all diagnostic views.
+- **Interactive Data Prep & Auto-Inversion:** Handle missing values via linear interpolation, dynamically exclude Isolation Forest anomalies (interactive checkbox outliers), and apply variance-stabilizing transformations (Log, Box-Cox). Preprocessing states are automatically propagated to validation and forecasting backends where they are mathematically inverted—ensuring error metrics (sMAPE, MAE) and charts are rendered strictly in the original target scale.
+- **Active Exogenous Covariate Impact Analyzer:** Analyze predictive strength using Pearson correlation coefficients ($r$) mapped on high-contrast dual-sided sliders. Identify weak drivers ($|r| < 0.2$) with built-in noise alerts, and dynamically include or exclude features from covariate-capable models (e.g., Chronos-2) with active toggle controls.
+- **Foundation Models vs. The Classics:** Automatically backtest zero-shot Deep Learning architectures (`google/timesfm-1.0-200m`, `amazon/chronos-bolt-base`, `amazon/chronos-t5` vs. classical baselines like `AutoETS` and `AutoTheta`) using a rolling-origin validation engine. PyTorch automatically leverages Apple MPS/CUDA acceleration if available.
+- **Export Studio:** The winning architecture projects future quantiles (80% Confidence Intervals) ready for executive reviews. Customize CSV exports, include/exclude history, and copy a fully reproducible Pandas snippet to recreate the visualization inside Jupyter notebooks.
 
 ## 🏗 Architecture
 
@@ -62,9 +64,9 @@ The app will be available at `http://localhost:5173`.
 ## 🧪 The Workflow
 
 1. **Input:** Select a rigorous benchmark (Economics, Demand, Supply) or upload your own chaotic dataset.
-2. **Diagnostics & EDA:** Geek out. Analyze the Structural Changepoints, Isolation Forest Anomalies, and the Forecastability Score to understand the underlying signal mechanics.
-3. **Validation:** Laplace splits your data, holds out a horizon, and forces Google and Amazon to compete against classical math. A Leaderboard ranks them by sMAPE.
-4. **Forecast & Export Studio:** The winning architecture projects into the true future. Customize your quantiles, copy the Pandas reproducibility snippet, and download the Boardroom-Ready CSV.
+2. **Diagnostics & EDA:** Clean missing values, prune Isolation Forest anomalies, and apply variance-stabilizing transforms (Log, Box-Cox). Switch between Boardroom/Lab copies to align your strategy, and filter out low-correlation exogenous drivers using the Covariate Impact Analyzer.
+3. **Validation:** Laplace splits your data, applies your selected preprocessing configuration, backtests Google and Amazon models alongside classical baselines, automatically applies inverse-variance mathematics, and ranks them on the leaderboard by sMAPE.
+4. **Forecast & Export Studio:** The winning model generates the final future forecast. Laplace automatically inverts all transforms to show original-scale data, allows high-fidelity visual exploration, and provides courtroom-grade reproducible Pandas snippets and boardroom-ready CSVs.
 
 ## 📜 License
 MIT License. Built for forecasting enthusiasts.

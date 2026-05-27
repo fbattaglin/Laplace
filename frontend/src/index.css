@@ -9,3 +9,31 @@
     @apply bg-base-canvas text-base-primary font-sans antialiased;
   }
 }
+
+@media print {
+  /* Hide sidebars, buttons, and navigation elements */
+  .no-print, nav, button, .sidebar {
+    display: none !important;
+  }
+  
+  /* Ensure a clean white background for the page */
+  body, .bg-base-canvas, .bg-base-surface {
+    background-color: white !important;
+    color: black !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* Make the main content take the full width */
+  main, .container, .max-w-7xl {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Avoid page breaks inside important components */
+  .recharts-wrapper, .border {
+    page-break-inside: avoid;
+  }
+}

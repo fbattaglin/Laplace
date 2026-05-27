@@ -1,179 +1,61 @@
 INFO:     Will watch for changes in these directories: ['/Users/fabiano/My_Code/Laplace_v2/backend']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [17449] using WatchFiles
-INFO:     Started server process [17472]
+INFO:     Started reloader process [55861] using WatchFiles
+INFO:     Started server process [55928]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:56358 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56358 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56359 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56359 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56380 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56380 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56359 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56394 - "OPTIONS /api/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61750 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61751 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61751 - "GET /api/datasets/supply_chain_inventory HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61751 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61763 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61751 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61763 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61768 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61769 - "GET /api/datasets/marketing_roi HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61862 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61867 - "OPTIONS /api/clean HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61867 - "POST /api/clean HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61881 - "OPTIONS /api/validation HTTP/1.1" 200 OK
 `torch_dtype` is deprecated! Use `dtype` instead!
-Lazy loading Chronos-T5-Small into registry...
+`torch_dtype` is deprecated! Use `dtype` instead!
+/Users/fabiano/My_Code/Laplace_v2/backend/.venv/lib/python3.12/site-packages/chronos/chronos2/dataset.py:99: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /Users/runner/work/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:219.)
+  target = torch.from_numpy(target)
+Lazy loading amazon/chronos-2 into registry...
 Lazy loading TimesFM-200M into registry...
  See https://github.com/google-research/timesfm/blob/master/README.md for updated APIs.
 Loaded PyTorch TimesFM, likely because python version is 3.12.13 (main, Mar 10 2026, 18:18:07) [Clang 21.1.4 ].
-Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 91180.52it/s]
-INFO:     127.0.0.1:56394 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56408 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56409 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56408 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56409 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56533 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56534 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56541 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56542 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56604 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56604 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56605 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56605 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56629 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56629 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56629 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56629 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56715 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56728 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56744 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56743 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56762 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56762 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56776 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56803 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56804 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56804 - "GET /api/datasets/national_grid HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56813 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56804 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56816 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56832 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56816 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56842 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56842 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57041 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57041 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57042 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57058 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57076 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57077 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57093 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57093 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57094 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57124 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57135 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57135 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57136 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57174 - "GET /api/datasets HTTP/1.1" 200 OK
-WARNING:  WatchFiles detected changes in 'download_business_samples.py'. Reloading...
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [17472]
-INFO:     Started server process [18434]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     127.0.0.1:57395 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57395 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57404 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57395 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57404 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57416 - "OPTIONS /api/validation HTTP/1.1" 200 OK
-`torch_dtype` is deprecated! Use `dtype` instead!
-Lazy loading Chronos-T5-Small into registry...
-Lazy loading TimesFM-200M into registry...
- See https://github.com/google-research/timesfm/blob/master/README.md for updated APIs.
-Loaded PyTorch TimesFM, likely because python version is 3.12.13 (main, Mar 10 2026, 18:18:07) [Clang 21.1.4 ].
-Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 91846.07it/s]
-INFO:     127.0.0.1:57416 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57433 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57434 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57434 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57433 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57489 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57490 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57493 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57503 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57493 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57513 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57562 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57563 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57576 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57576 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57689 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57689 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57815 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57816 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57831 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57831 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57832 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57832 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57842 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57865 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57866 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57866 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57865 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57884 - "OPTIONS /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57884 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57899 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57900 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57900 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57899 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57917 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57918 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57918 - "GET /api/datasets/walmart_m5 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57927 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57918 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57938 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57960 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57959 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57979 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57980 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63031 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63032 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63039 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63049 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63050 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63050 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63049 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63067 - "OPTIONS /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63067 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63078 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63078 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63079 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63078 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63091 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63091 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63441 - "GET /api/datasets/vix HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63441 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63453 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63453 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63441 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63456 - "OPTIONS /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63456 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63471 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63472 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63471 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63472 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63485 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63485 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63492 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63543 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63545 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63545 - "GET /api/datasets/vix HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63556 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63556 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63568 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63676 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63724 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63725 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63741 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63741 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [18434]
-INFO:     Stopping reloader process [17449]
-/Users/fabiano/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 73584.28it/s]
+INFO:     127.0.0.1:61881 - "POST /api/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61906 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61907 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61906 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61907 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61915 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61916 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61921 - "POST /api/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61939 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61938 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62002 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62037 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62038 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62056 - "POST /api/clean HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62067 - "POST /api/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62084 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62083 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62089 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62090 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62096 - "GET /api/datasets/agriculture_yield HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62110 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62110 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62126 - "POST /api/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62141 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62142 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62150 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62152 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62165 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62166 - "GET /api/datasets HTTP/1.1" 200 OK
