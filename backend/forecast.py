@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from statsforecast import StatsForecast
-from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive, AutoARIMA
+from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive, AutoARIMA, RandomWalkWithDrift, HistoricAverage
 from model_registry import registry
 import os
 
@@ -44,6 +44,8 @@ def _run_single_model(model_name: str, y: np.ndarray, h: int, period: int, freq_
             'ETS': AutoETS(season_length=period),
             'Theta': AutoTheta(season_length=period),
             'ARIMA': AutoARIMA(season_length=period),
+            'Drift': RandomWalkWithDrift(),
+            'HistoricAverage': HistoricAverage()
         }
         sf_model = model_map.get(model_name)
         if sf_model is None:
@@ -57,6 +59,7 @@ def _run_single_model(model_name: str, y: np.ndarray, h: int, period: int, freq_
             if model_name == 'ETS': col_prefix = 'AutoETS'
             elif model_name == 'Theta': col_prefix = 'AutoTheta'
             elif model_name == 'ARIMA': col_prefix = 'AutoARIMA'
+            elif model_name == 'Drift': col_prefix = 'RWD'
         return {
             "mean": forecasts[col_prefix].values,
             "lower": forecasts[f'{col_prefix}-lo-80'].values,
@@ -71,7 +74,8 @@ def run_forecast(
     h: int = 12, 
     covariate_cols: list = None,
     cleaning_config: list = None,
-    excluded_anomalies: list = None
+    excluded_anomalies: list = None,
+    ensemble_config: dict = None
 ):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
@@ -115,8 +119,18 @@ def run_forecast(
         component_models = ['ARIMA', 'ETS', 'Chronos-2']
         ensemble_weights = None
         
+        if ensemble_config:
+            strategy = ensemble_config.get("strategy", "inverse_smape")
+            custom_weights = ensemble_config.get("custom_weights", None)
+            if custom_weights:
+                component_models = list(custom_weights.keys())
+                total_w = sum(custom_weights.values())
+                if total_w > 0:
+                    ensemble_weights = {k: v / total_w for k, v in custom_weights.items()}
+                else:
+                    ensemble_weights = {k: 1.0 / len(custom_weights) for k in custom_weights}
+                    
         try:
-            import json
             model_forecasts = {}
             for comp_name in component_models:
                 try:

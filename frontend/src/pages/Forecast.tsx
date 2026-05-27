@@ -59,6 +59,7 @@ export default function Forecast() {
         // Load pre-processing configs from localStorage
         let cleaning_config = undefined;
         let excluded_anomalies = undefined;
+        let ensemble_config = undefined;
         
         const savedClean = localStorage.getItem('laplace_clean_config');
         if (savedClean) {
@@ -74,13 +75,23 @@ export default function Forecast() {
           } catch (_) {}
         }
 
+        if (winner === 'Ensemble') {
+          const savedEnsemble = localStorage.getItem('laplace_ensemble_config');
+          if (savedEnsemble) {
+            try {
+              ensemble_config = JSON.parse(savedEnsemble);
+            } catch (_) {}
+          }
+        }
+
         const reqConfig = { 
           ...parsed, 
           model_name: winner, 
           horizon,
           covariate_cols: parsed.covariate_cols || [],
           cleaning_config,
-          excluded_anomalies
+          excluded_anomalies,
+          ensemble_config
         };
         setConfig(reqConfig);
         loadForecast(reqConfig);

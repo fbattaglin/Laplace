@@ -175,13 +175,21 @@ export interface ValidationRequest {
   covariate_cols?: string[];
   cleaning_config?: any[];
   excluded_anomalies?: number[];
+  validation_type?: string;
+  num_splits?: number;
+  ensemble_config?: any;
 }
 
 export interface ModelMetrics {
   model: string;
   sMAPE: number;
+  sMAPE_std?: number;
   MASE: number;
   RMSE: number;
+  latency?: number;
+  weights?: Record<string, number>;
+  component_models?: string[];
+  strategy?: string;
 }
 
 export interface ValidationResponse {
@@ -196,6 +204,10 @@ export interface ValidationResponse {
     dates: string[];
     actual: number[];
   };
+  validation_type?: string;
+  actual_splits?: number;
+  dm_p_value?: number;
+  dm_comparison_model?: string;
 }
 
 export async function runValidation(req: ValidationRequest): Promise<ValidationResponse> {
@@ -221,6 +233,7 @@ export interface ForecastRequest {
   covariate_cols?: string[];
   cleaning_config?: any[];
   excluded_anomalies?: number[];
+  ensemble_config?: any;
 }
 
 export interface ForecastResponse {

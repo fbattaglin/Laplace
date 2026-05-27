@@ -174,6 +174,9 @@ class ValidationRequest(BaseModel):
     covariate_cols: List[str] = None
     cleaning_config: Optional[List[Dict[str, Any]]] = None
     excluded_anomalies: Optional[List[int]] = None
+    validation_type: Optional[str] = "holdout"  # "holdout" or "walk_forward"
+    num_splits: Optional[int] = 3
+    ensemble_config: Optional[Dict[str, Any]] = None
 
 from validation import run_backtest
 
@@ -201,7 +204,10 @@ def run_validation(req: ValidationRequest):
             req.selected_models, 
             req.covariate_cols,
             req.cleaning_config,
-            req.excluded_anomalies
+            req.excluded_anomalies,
+            req.validation_type,
+            req.num_splits,
+            req.ensemble_config
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -273,6 +279,7 @@ class ForecastRequest(BaseModel):
     covariate_cols: List[str] = None
     cleaning_config: Optional[List[Dict[str, Any]]] = None
     excluded_anomalies: Optional[List[int]] = None
+    ensemble_config: Optional[Dict[str, Any]] = None
 
 from forecast import run_forecast
 
@@ -300,7 +307,8 @@ def generate_forecast(req: ForecastRequest):
             req.horizon, 
             req.covariate_cols,
             req.cleaning_config,
-            req.excluded_anomalies
+            req.excluded_anomalies,
+            req.ensemble_config
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

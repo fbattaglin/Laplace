@@ -73,7 +73,8 @@ def build_ensemble_from_validation(
     y_test: np.ndarray,
     y_train: np.ndarray,
     period: int,
-    top_n: int = 3
+    top_n: int = 3,
+    ensemble_config: Dict[str, Any] = None
 ) -> Dict[str, Any]:
     """
     Full ensemble pipeline for the validation step.
@@ -85,7 +86,35 @@ def build_ensemble_from_validation(
     if len(metrics) < 2:
         return None
     
-    weights = compute_ensemble_weights(metrics, top_n=top_n)
+    strategy = "inverse_smape"
+    custom_weights = None
+    if ensemble_config:
+        strategy = ensemble_config.get("strategy", "inverse_smape")
+        custom_weights = ensemble_config.get("custom_weights", None)
+        
+    weights = {}
+    if strategy == "custom" and custom_weights:
+        valid_custom = {k: float(v) for k, v in custom_weights.items() if any(m["model"] == k for m in metrics)}
+        if valid_custom:
+            total = sum(valid_custom.values())
+            if total > 0:
+                weights = {k: v / total for k, v in valid_custom.items()}
+            else:
+                weights = {k: 1.0 / len(valid_custom) for k in valid_custom}
+        else:
+            strategy = "inverse_smape"
+            
+    if strategy == "equal":
+        sorted_metrics = sorted([m for m in metrics if m["model"] != "Ensemble"], key=lambda m: m["sMAPE"])
+        top_models = [m["model"] for m in sorted_metrics[:top_n]]
+        n = len(top_models)
+        weights = {m: 1.0 / n for m in top_models}
+        
+    if not weights or strategy == "inverse_smape":
+        # Remove any stale Ensemble entries from metrics before calculating top_n
+        clean_metrics = [m for m in metrics if m["model"] != "Ensemble"]
+        weights = compute_ensemble_weights(clean_metrics, top_n=top_n)
+        
     h = len(y_test)
     ensemble_preds = build_ensemble_prediction(weights, predictions, h)
     
@@ -102,7 +131,8 @@ def build_ensemble_from_validation(
         "MASE": round(float(e_mase), 3) if not np.isnan(e_mase) else 0.0,
         "RMSE": round(float(e_rmse), 2),
         "weights": {k: round(float(v), 3) for k, v in weights.items()},
-        "component_models": list(weights.keys())
+        "component_models": list(weights.keys()),
+        "strategy": strategy
     }
     
     return ensemble_metrics, ensemble_preds
