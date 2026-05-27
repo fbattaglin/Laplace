@@ -17,9 +17,13 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str]]:
         date_col = datetime_cols[0]
     else:
         # Check by name heuristics and try parsing
-        date_keywords = ['date', 'time', 'timestamp', 'ds', 'month', 'year', 'day']
+        date_keywords = ['date', 'time', 'timestamp', 'ds', 'month', 'year', 'day', 'week']
         for col in df.columns:
             if any(keyword in col.lower() for keyword in date_keywords):
+                # If the column is numeric, only allow it if it contains "year" or "timestamp"
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    if not ('year' in col.lower() or 'timestamp' in col.lower()):
+                        continue
                 # Attempt to parse a sample
                 try:
                     pd.to_datetime(df[col].dropna().head(10))
@@ -49,7 +53,7 @@ def detect_columns(df: pd.DataFrame) -> Tuple[Optional[str], Optional[str]]:
 
     if numeric_cols:
         # Check by name heuristics
-        target_keywords = ['target', 'value', 'y', 'sales', 'demand', 'price', 'qty', 'quantity', 'passengers']
+        target_keywords = ['target', 'value', 'y', 'sales', 'demand', 'price', 'qty', 'quantity', 'passengers', 'yield', 'mrr', 'level', 'cpi', 'views', 'volume']
         for col in numeric_cols:
             if any(keyword in col.lower() for keyword in target_keywords):
                 target_col = col
