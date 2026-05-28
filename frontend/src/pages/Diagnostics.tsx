@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, AlertTriangle, TrendingUp, BarChart2, Calculator, ChevronRight, CheckCircle, XCircle, ChevronDown, ShieldAlert } from 'lucide-react';
+import { Activity, AlertTriangle, TrendingUp, BarChart2, Calculator, ChevronRight, CheckCircle, XCircle, ShieldAlert } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { runDiagnostics, cleanData, type DiagnosticsRequest, type DiagnosticsResponse } from '../lib/api';
 import clsx from 'clsx';
@@ -13,9 +13,6 @@ export default function Diagnostics() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DiagnosticsResponse | null>(null);
   
-  const [isDataPrepOpen, setIsDataPrepOpen] = useState(false);
-  const [isAnomalyOpen, setIsAnomalyOpen] = useState(false);
-
   const [outlierMethod, setOutlierMethod] = useState("off");
   const [smoothingMethod, setSmoothingMethod] = useState("off");
   const [varianceMethod, setVarianceMethod] = useState("off");
@@ -109,7 +106,6 @@ export default function Diagnostics() {
       // Auto-select linear interpolation if NaNs/missing values are detected
       if (res.stats && res.stats.missing_pct > 0) {
         setMissingMethod("linear");
-        setIsDataPrepOpen(true);
       }
     } catch (err: any) {
       setError(err.message);
@@ -519,16 +515,210 @@ export default function Diagnostics() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      {/* Interactive Data Prep & Anomaly Studio */}
+      <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="flex items-center gap-2">
+          <Activity className="text-[#6366F1]" size={22} />
+          <h2 className="text-xl font-bold tracking-tight">
+            {isLab ? "Interactive Data Preparation Studio" : "Interactive Data Prep & Outlier Studio"}
+          </h2>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Card 1: Data Prep Pipeline */}
+          <div className="border-l-[3px] border-[#6366F1] bg-white rounded-r-2xl border border-base-secondary/20 shadow-sm flex flex-col justify-between overflow-hidden">
+            <div className="p-6 border-b border-base-secondary/10 bg-[#6366F1]/5">
+              <h3 className="font-bold flex items-center gap-2 text-base-primary text-md">
+                <span className="text-lg">🧹</span> {isLab ? "DATA PREP PIPELINE" : "DATA CLEANING & PREPARATION"}
+              </h3>
+              <p className="text-xs text-base-secondary mt-1">
+                {isLab 
+                  ? `${outlierMethod !== "off" || smoothingMethod !== "off" || varianceMethod !== "off" || missingMethod !== "off" ? "Active transforms" : "No transforms applied"} · ${data.anomalies?.length || 0} outliers detected` 
+                  : "Adjust for outliers, dampen random noise, and stabilize large data swings"}
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-base-secondary uppercase tracking-wider">
+                      {isLab ? "Outlier Removal" : "Dampen Spikes & Dips"}
+                    </span>
+                    <div className="flex items-center bg-base-surface border border-base-secondary/15 rounded-xl p-0.5 w-full">
+                      {renderBtn(outlierMethod, setOutlierMethod, "off", "Off")}
+                      {renderBtn(outlierMethod, setOutlierMethod, "iqr", isLab ? "IQR" : "IQR (Auto)")}
+                      {renderBtn(outlierMethod, setOutlierMethod, "zscore", isLab ? "Z-Score" : "Z-Score")}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-base-secondary uppercase tracking-wider">
+                      {isLab ? "Smoothing" : "Dampen Random Noise"}
+                    </span>
+                    <div className="flex items-center bg-base-surface border border-base-secondary/15 rounded-xl p-0.5 w-full">
+                      {renderBtn(smoothingMethod, setSmoothingMethod, "off", "Off")}
+                      {renderBtn(smoothingMethod, setSmoothingMethod, "sma", isLab ? "SMA" : "Moving Avg")}
+                      {renderBtn(smoothingMethod, setSmoothingMethod, "ewm", isLab ? "EWM" : "Weighted")}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-base-secondary uppercase tracking-wider">
+                      {isLab ? "Variance Transform" : "Stabilize Wild Volatility"}
+                    </span>
+                    <div className="flex items-center bg-base-surface border border-base-secondary/15 rounded-xl p-0.5 w-full">
+                      {renderBtn(varianceMethod, setVarianceMethod, "off", "Off")}
+                      {renderBtn(varianceMethod, setVarianceMethod, "log", isLab ? "Log" : "Log (Dampen)")}
+                      {renderBtn(varianceMethod, setVarianceMethod, "boxcox", isLab ? "Box-Cox" : "Box-Cox (Advanced)")}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-base-secondary uppercase tracking-wider">
+                      {isLab ? "Missing Values" : "Interpolate Blank Gaps"}
+                    </span>
+                    <div className="flex items-center bg-base-surface border border-base-secondary/15 rounded-xl p-0.5 w-full">
+                      {renderBtn(missingMethod, setMissingMethod, "off", "Off")}
+                      {renderBtn(missingMethod, setMissingMethod, "linear", isLab ? "Linear" : "Linear Fill")}
+                      {renderBtn(missingMethod, setMissingMethod, "zero", isLab ? "Zero" : "Fill Zeros")}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-base-secondary/20 rounded-xl p-4 bg-base-surface/30 flex flex-col h-full min-h-[220px]">
+                  {cleanPreviewData ? (
+                    <>
+                      <h4 className="text-[10px] font-bold text-base-secondary uppercase tracking-wider mb-2">Transformed Preview</h4>
+                      <div className="flex-1 min-h-[145px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={previewChartData}>
+                            <XAxis dataKey="date" hide />
+                            <YAxis hide domain={['auto', 'auto']} />
+                            <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                            <Line type="monotone" dataKey="original" stroke="#9E9E9F" strokeDasharray="3 3" strokeWidth={1.2} dot={false} isAnimationActive={false} name="Original" />
+                            <Line type="monotone" dataKey="cleaned" stroke="#6366F1" strokeWidth={2} dot={false} isAnimationActive={false} name="Transformed" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                      <span className="text-xl mb-1">📊</span>
+                      <span className="text-xs text-base-secondary font-medium">Select methods and click Apply to preview transformed series</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-3 pt-4 border-t border-base-secondary/10">
+                <button onClick={handleResetTransforms} className="px-4 py-2 text-xs font-semibold text-base-secondary hover:text-base-primary transition-colors">Reset to Raw</button>
+                <button 
+                  onClick={handleApplyTransforms} 
+                  disabled={cleaning}
+                  className="px-5 py-2 text-xs font-bold bg-[#6366F1] text-white rounded-lg shadow-md hover:bg-[#6366F1]/90 transition-colors disabled:opacity-50"
+                >
+                  {cleaning ? "Applying..." : "Apply Transforms"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Anomaly Inspector */}
+          <div className="border-l-[3px] border-[#6366F1] bg-white rounded-r-2xl border border-base-secondary/20 shadow-sm flex flex-col justify-between overflow-hidden">
+            <div className="p-6 border-b border-base-secondary/10 bg-[#6366F1]/5">
+              <h3 className="font-bold flex items-center gap-2 text-base-primary text-md">
+                <span className="text-lg">🔍</span> {isLab ? "ANOMALY DETECTOR" : "OUTLIER & EVENT ADJUSTER"}
+              </h3>
+              <p className="text-xs text-base-secondary mt-1">
+                {data.anomalies?.length || 0} {isLab ? "anomalies detected (Isolation Forest)" : "unusual spikes or shocks detected"}
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+              <div className="h-20 border border-base-secondary/20 rounded-xl bg-base-surface/30 flex items-center gap-3 px-4 py-3">
+                <span className="text-2xl">🛡️</span>
+                <div>
+                  <span className="text-xs font-bold text-base-primary block mb-0.5">
+                    {isLab ? "Rigorous Isolation Forest Filtering" : "Outlier Adjustment Engine"}
+                  </span>
+                  <span className="text-[11px] text-base-secondary block leading-normal">
+                    {isLab 
+                      ? "Identifies records situated in low-density subspaces of the R¹ projection, using a contamination factor of 0.05."
+                      : "Outliers are major anomalies (like unexpected discount events) that could throw off forecasting algorithms."}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="border border-base-secondary/25 rounded-xl overflow-hidden flex-1 flex flex-col min-h-[160px]">
+                <div className="bg-base-surface px-4 py-2 border-b border-base-secondary/20 flex text-[10px] font-bold text-base-secondary uppercase tracking-wider shrink-0">
+                  <div className="w-1/4">Date</div>
+                  <div className="w-1/4">Value</div>
+                  <div className="w-1/4">{isLab ? "Anomaly Score" : "Impact Score"}</div>
+                  <div className="w-1/4 text-right">Action</div>
+                </div>
+                <div className="flex-1 max-h-48 overflow-y-auto">
+                  {data.anomalies && data.anomalies.length > 0 ? (
+                    data.anomalies.map((a: any, i: number) => (
+                      <div key={i} className="px-4 py-2.5 border-b border-base-secondary/10 flex items-center text-xs last:border-0 hover:bg-base-surface/50">
+                        <div className="w-1/4 font-semibold text-base-primary">{data.dates[a.index]}</div>
+                        <div className="w-1/4 font-medium">{Number(a.value).toFixed(2)}</div>
+                        <div className="w-1/4 flex items-center gap-2">
+                          <span className="font-semibold">{a.score.toFixed(2)}</span>
+                          <span className={clsx(
+                            "w-2 h-2 rounded-full shrink-0",
+                            a.severity === "high" ? "bg-accent-alert animate-pulse" : "bg-accent-warning"
+                          )} />
+                        </div>
+                        <div className="w-1/4 text-right">
+                          <label className="flex items-center justify-end gap-1.5 cursor-pointer text-base-secondary hover:text-base-primary select-none">
+                            <input 
+                              type="checkbox" 
+                              className="accent-[#6366F1] w-3.5 h-3.5" 
+                              checked={excludedAnomalies.includes(a.index)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setExcludedAnomalies(prev => {
+                                  const next = checked 
+                                    ? [...prev, a.index] 
+                                    : prev.filter(idx => idx !== a.index);
+                                  localStorage.setItem('laplace_excluded_anomalies', JSON.stringify(next));
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="text-[11px] font-medium">Exclude</span>
+                          </label>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-xs text-base-secondary italic">No anomalies detected.</div>
+                  )}
+                </div>
+              </div>
+              
+              <p className="text-[10px] text-base-secondary mt-1 leading-normal italic">
+                {isLab 
+                  ? "Excluded coordinates will be replaced via local linear interpolation prior to estimator fitting."
+                  : "Checked anomalies are excluded from training, auto-replacing them with smooth estimates to protect your baseline trend."}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Deep Dive Structural Analysis (Side-by-side Visualizations) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
         {/* STL Decomposition Plots */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="space-y-4 flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
             <TrendingUp size={20} className="text-base-secondary" />
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-bold tracking-tight">
               {isLab ? "LOESS STL Signal Decomposition" : "Core Business Drivers (Decomposition)"}
             </h2>
           </div>
-          <p className="text-sm text-base-secondary mb-4">
+          <p className="text-xs text-base-secondary leading-normal">
             {isLab ? (
               "Additive decomposition: Y_t = T_t + S_t + R_t. Red indicators represent Isolation Forest anomaly contamination. Vertical dashed lines denote ruptures/trend changepoints."
             ) : (
@@ -536,39 +726,39 @@ export default function Diagnostics() {
             )}
           </p>
           
-          <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl space-y-6">
+          <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl space-y-6 flex-1 flex flex-col justify-between">
             {/* Observed + Anomalies + Changepoints */}
-            <div className="h-48">
-              <h3 className="text-xs font-semibold text-base-secondary uppercase tracking-wider mb-2">Observed (Original)</h3>
+            <div className="h-44">
+              <h3 className="text-xs font-bold text-base-secondary uppercase tracking-wider mb-2">Observed (Original)</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stlData}>
                   <XAxis dataKey="date" hide />
                   <YAxis hide domain={['auto', 'auto']} />
-                  <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   {/* Changepoints */}
                   {data.changepoints.map((idx, i) => (
                     <ReferenceLine key={i} x={data.dates[idx]} stroke="#FF6B00" strokeDasharray="3 3" strokeOpacity={0.6} />
                   ))}
                   <Line type="monotone" dataKey="observed" stroke="#111111" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                   {/* Anomalies */}
-                  <Line type="monotone" dataKey="anomaly" stroke="transparent" dot={{ r: 3, fill: '#FF2A3A', stroke: '#FF2A3A' }} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="anomaly" stroke="transparent" dot={{ r: 3.5, fill: '#FF2A3A', stroke: '#FF2A3A' }} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
             {/* Other STL Components */}
             {[
-              { key: 'trend', label: isLab ? 'Trend' : 'Momentum & Trend (Long-term Direction)', color: '#0066FF' },
-              { key: 'seasonal', label: isLab ? 'Seasonal' : 'Calendar Cycles (Weekly/Monthly Patterns)', color: '#FF6B00' },
+              { key: 'trend', label: isLab ? 'Trend Component' : 'Momentum & Trend (Long-term Direction)', color: '#0066FF' },
+              { key: 'seasonal', label: isLab ? 'Seasonal Component' : 'Calendar Cycles (Weekly/Monthly Patterns)', color: '#FF6B00' },
               { key: 'resid', label: isLab ? 'Residuals (Noise)' : 'Random Noise & Anomalies', color: '#6E6E73' }
             ].map(plot => (
-              <div key={plot.key} className="h-32">
-                <h3 className="text-xs font-semibold text-base-secondary uppercase tracking-wider mb-2">{plot.label}</h3>
+              <div key={plot.key} className="h-28">
+                <h3 className="text-xs font-bold text-base-secondary uppercase tracking-wider mb-2">{plot.label}</h3>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stlData}>
                     <XAxis dataKey="date" hide />
                     <YAxis hide domain={['auto', 'auto']} />
-                    <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                     <Line type="monotone" dataKey={plot.key} stroke={plot.color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -577,206 +767,15 @@ export default function Diagnostics() {
           </div>
         </div>
 
-        {/* Data Prep & Anomaly Panels (Visible in both modes!) */}
-        {true && (
-          <div className="space-y-4">
-            {/* Panel 1: Data Prep */}
-            <div className="border-l-[3px] border-[#6366F1] bg-[#6366F1]/5 rounded-r-xl overflow-hidden shadow-sm">
-              <button 
-                onClick={() => setIsDataPrepOpen(!isDataPrepOpen)}
-                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#6366F1]/10 transition-colors"
-              >
-                <div>
-                  <h3 className="font-bold flex items-center gap-2 text-base-primary">
-                    <span className="text-xl">🧹</span> {isLab ? "DATA PREP PIPELINE" : "DATA CLEANING & PREPARATION"}
-                  </h3>
-                  <p className="text-sm text-base-secondary mt-1">
-                    {isLab 
-                      ? `${outlierMethod !== "off" || smoothingMethod !== "off" || varianceMethod !== "off" || missingMethod !== "off" ? "Active transforms" : "No transforms applied"} · ${data.anomalies?.length || 0} outliers detected` 
-                      : "Adjust for outliers, dampen random noise, and stabilize large data swings"}
-                  </p>
-                </div>
-                <ChevronDown className={clsx("text-base-secondary transition-transform duration-300", isDataPrepOpen ? "rotate-180" : "")} />
-              </button>
-              
-              <div className={clsx(
-                "overflow-hidden transition-all duration-300 ease-in-out",
-                isDataPrepOpen ? "max-h-[800px] opacity-100 border-t border-[#6366F1]/10" : "max-h-0 opacity-0"
-              )}>
-                <div className="p-5 bg-white">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">{isLab ? "Outlier Removal" : "Dampen Spikes & Dips"}</span>
-                        <div className="flex items-center bg-base-surface rounded-lg p-1">
-                          {renderBtn(outlierMethod, setOutlierMethod, "off", "Off")}
-                          {renderBtn(outlierMethod, setOutlierMethod, "iqr", isLab ? "IQR" : "IQR (Auto)")}
-                          {renderBtn(outlierMethod, setOutlierMethod, "zscore", isLab ? "Z-Score" : "Z-Score")}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">{isLab ? "Smoothing" : "Dampen Random Noise"}</span>
-                        <div className="flex items-center bg-base-surface rounded-lg p-1">
-                          {renderBtn(smoothingMethod, setSmoothingMethod, "off", "Off")}
-                          {renderBtn(smoothingMethod, setSmoothingMethod, "sma", isLab ? "SMA" : "Moving Avg")}
-                          {renderBtn(smoothingMethod, setSmoothingMethod, "ewm", isLab ? "EWM" : "Weighted")}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">{isLab ? "Variance Transform" : "Stabilize Wild Volatility"}</span>
-                        <div className="flex items-center bg-base-surface rounded-lg p-1">
-                          {renderBtn(varianceMethod, setVarianceMethod, "off", "Off")}
-                          {renderBtn(varianceMethod, setVarianceMethod, "log", isLab ? "Log" : "Log (Dampen)")}
-                          {renderBtn(varianceMethod, setVarianceMethod, "boxcox", isLab ? "Box-Cox" : "Box-Cox (Advanced)")}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">{isLab ? "Missing Values" : "Interpolate Blank Gaps"}</span>
-                        <div className="flex items-center bg-base-surface rounded-lg p-1">
-                          {renderBtn(missingMethod, setMissingMethod, "off", "Off")}
-                          {renderBtn(missingMethod, setMissingMethod, "linear", isLab ? "Linear" : "Linear Fill")}
-                          {renderBtn(missingMethod, setMissingMethod, "zero", isLab ? "Zero" : "Fill Zeros")}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border border-base-secondary/20 rounded-xl p-4 bg-base-surface/30 flex flex-col h-64">
-                      {cleanPreviewData ? (
-                        <>
-                          <h4 className="text-xs font-semibold text-base-secondary uppercase tracking-wider mb-2">Transformed Preview</h4>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={previewChartData}>
-                              <XAxis dataKey="date" hide />
-                              <YAxis hide domain={['auto', 'auto']} />
-                              <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                              <Line type="monotone" dataKey="original" stroke="#6E6E73" strokeDasharray="3 3" strokeWidth={1.5} dot={false} isAnimationActive={false} name="Original" />
-                              <Line type="monotone" dataKey="cleaned" stroke="#0066FF" strokeWidth={2} dot={false} isAnimationActive={false} name="Transformed" />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </>
-                      ) : (
-                        <div className="flex items-center justify-center h-full">
-                          <span className="text-sm text-base-secondary">Select methods and click Apply to preview</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-base-surface">
-                    <button onClick={handleResetTransforms} className="px-4 py-2 text-sm font-medium text-base-secondary hover:text-base-primary transition-colors">Reset to Raw</button>
-                    <button 
-                      onClick={handleApplyTransforms} 
-                      disabled={cleaning}
-                      className="px-4 py-2 text-sm font-medium bg-[#6366F1] text-white rounded-lg shadow-sm hover:bg-[#6366F1]/90 transition-colors disabled:opacity-50"
-                    >
-                      {cleaning ? "Applying..." : "Apply Transforms"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Panel 2: Anomaly Inspector */}
-            <div className="border-l-[3px] border-[#6366F1] bg-[#6366F1]/5 rounded-r-xl overflow-hidden shadow-sm">
-              <button 
-                onClick={() => setIsAnomalyOpen(!isAnomalyOpen)}
-                className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#6366F1]/10 transition-colors"
-              >
-                <div>
-                  <h3 className="font-bold flex items-center gap-2 text-base-primary">
-                    <span className="text-xl">🔍</span> {isLab ? "ANOMALY DETECTOR" : "OUTLIER & EVENT ADJUSTER"}
-                  </h3>
-                  <p className="text-sm text-base-secondary mt-1">
-                    {data.anomalies?.length || 0} {isLab ? "anomalies detected (Isolation Forest)" : "unusual spikes or shocks detected"}
-                  </p>
-                </div>
-                <ChevronDown className={clsx("text-base-secondary transition-transform duration-300", isAnomalyOpen ? "rotate-180" : "")} />
-              </button>
-              
-              <div className={clsx(
-                "overflow-hidden transition-all duration-300 ease-in-out",
-                isAnomalyOpen ? "max-h-[500px] opacity-100 border-t border-[#6366F1]/10" : "max-h-0 opacity-0"
-              )}>
-                <div className="p-5 bg-white">
-                  <div className="h-32 mb-4 border border-base-secondary/20 rounded-xl bg-base-surface/30 flex flex-col items-center justify-center p-4 text-center">
-                    <span className="text-xl mb-1">🛡️</span>
-                    <span className="text-sm font-semibold text-base-primary mb-1">
-                      {isLab ? "Rigorous Isolation Forest Filtering" : "Outlier Adjustment Engine"}
-                    </span>
-                    <span className="text-xs text-base-secondary max-w-md">
-                      {isLab 
-                        ? "Identifies records situated in low-density subspaces of the R¹ projection, using a contamination factor of 0.05."
-                        : "Outliers are major anomalies (like unexpected discount events) that could throw off forecasting algorithms."}
-                    </span>
-                  </div>
-                  
-                  <div className="border border-base-secondary/20 rounded-xl overflow-hidden">
-                    <div className="bg-base-surface px-4 py-2 border-b border-base-secondary/20 flex text-xs font-bold text-base-secondary uppercase tracking-wider">
-                      <div className="w-1/4">Date</div>
-                      <div className="w-1/4">Value</div>
-                      <div className="w-1/4">{isLab ? "Anomaly Score" : "Impact Score"}</div>
-                      <div className="w-1/4 text-right">Action</div>
-                    </div>
-                    <div className="max-h-48 overflow-y-auto">
-                      {data.anomalies && data.anomalies.length > 0 ? (
-                        data.anomalies.map((a: any, i: number) => (
-                          <div key={i} className="px-4 py-3 border-b border-base-secondary/10 flex items-center text-sm last:border-0 hover:bg-base-surface/50">
-                            <div className="w-1/4 font-medium">{data.dates[a.index]}</div>
-                            <div className="w-1/4">{Number(a.value).toFixed(2)}</div>
-                            <div className="w-1/4 flex items-center gap-2">
-                              {a.score.toFixed(2)}
-                              <span className={clsx(
-                                "w-2 h-2 rounded-full",
-                                a.severity === "high" ? "bg-accent-alert" : "bg-accent-warning"
-                              )} />
-                            </div>
-                            <div className="w-1/4 text-right">
-                              <label className="flex items-center justify-end gap-2 cursor-pointer text-base-secondary hover:text-base-primary">
-                                <input 
-                                  type="checkbox" 
-                                  className="accent-[#6366F1] w-4 h-4" 
-                                  checked={excludedAnomalies.includes(a.index)}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    setExcludedAnomalies(prev => {
-                                      const next = checked 
-                                        ? [...prev, a.index] 
-                                        : prev.filter(idx => idx !== a.index);
-                                      localStorage.setItem('laplace_excluded_anomalies', JSON.stringify(next));
-                                      return next;
-                                    });
-                                  }}
-                                />
-                                <span className="text-xs">Exclude</span>
-                              </label>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-sm text-base-secondary italic">No anomalies detected.</div>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-base-secondary mt-3">
-                    {isLab 
-                      ? "Excluded coordinates will be replaced via local linear interpolation prior to estimator fitting."
-                      : "Checked anomalies are excluded from training, auto-replacing them with smooth estimates to protect your baseline trend."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ACF / PACF Plots */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
+        <div className="space-y-4 flex flex-col">
+          <div className="flex items-center gap-2 mb-1">
             <BarChart2 size={20} className="text-base-secondary" />
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-bold tracking-tight">
               {isLab ? "Autocorrelation & Memory Lags" : "Historical Calendar Repeatability"}
             </h2>
           </div>
-          <p className="text-sm text-base-secondary mb-4">
+          <p className="text-xs text-base-secondary leading-normal">
             {isLab ? (
               "Autocorrelation (ACF) and Partial Autocorrelation (PACF) coefficients showing statistical memory across lags."
             ) : (
@@ -784,41 +783,45 @@ export default function Diagnostics() {
             )}
           </p>
 
-          <div className="grid grid-cols-1 gap-6">
-            <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl h-[300px]">
-              <h3 className="text-xs font-semibold text-base-secondary uppercase tracking-wider mb-4">
+          <div className="grid grid-cols-1 gap-6 flex-1">
+            <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl flex-1 flex flex-col justify-between min-h-[260px]">
+              <h3 className="text-xs font-bold text-base-secondary uppercase tracking-wider mb-4">
                 {isLab ? "ACF (Autocorrelation Function)" : "Direct Sales Patterns (ACF)"}
               </h3>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={acfData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
-                  <XAxis dataKey="lag" tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
-                  <YAxis domain={[-1, 1]} tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <ReferenceLine y={0} stroke="#111111" />
-                  <ReferenceLine y={0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
-                  <ReferenceLine y={-0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
-                  <Bar dataKey="value" fill="#0066FF" radius={[2, 2, 0, 0]} maxBarSize={4} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex-1 h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={acfData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
+                    <XAxis dataKey="lag" tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
+                    <YAxis domain={[-1, 1]} tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <ReferenceLine y={0} stroke="#111111" />
+                    <ReferenceLine y={0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
+                    <ReferenceLine y={-0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
+                    <Bar dataKey="value" fill="#0066FF" radius={[2, 2, 0, 0]} maxBarSize={4} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl h-[300px]">
-              <h3 className="text-xs font-semibold text-base-secondary uppercase tracking-wider mb-4">
+            <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl flex-1 flex flex-col justify-between min-h-[260px]">
+              <h3 className="text-xs font-bold text-base-secondary uppercase tracking-wider mb-4">
                 {isLab ? "PACF (Partial Autocorrelation Function)" : "Indirect Sales Cycles (PACF)"}
               </h3>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pacfData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
-                  <XAxis dataKey="lag" tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
-                  <YAxis domain={[-1, 1]} tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <ReferenceLine y={0} stroke="#111111" />
-                  <ReferenceLine y={0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
-                  <ReferenceLine y={-0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
-                  <Bar dataKey="value" fill="#FF6B00" radius={[2, 2, 0, 0]} maxBarSize={4} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="flex-1 h-44">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pacfData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5EA" />
+                    <XAxis dataKey="lag" tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
+                    <YAxis domain={[-1, 1]} tick={{fontSize: 10, fill: '#6E6E73'}} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ fontSize: '11px', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <ReferenceLine y={0} stroke="#111111" />
+                    <ReferenceLine y={0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
+                    <ReferenceLine y={-0.2} stroke="#FF2A3A" strokeDasharray="3 3" strokeOpacity={0.5} />
+                    <Bar dataKey="value" fill="#FF6B00" radius={[2, 2, 0, 0]} maxBarSize={4} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </div>
