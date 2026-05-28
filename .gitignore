@@ -14,6 +14,7 @@ backend/.coverage
 backend/.env
 
 # Ignore uploaded and generated data, but keep reference datasets
+data/
 backend/data/uploads/
 backend/data/results_log.csv
 backend/data/*.xlsx
