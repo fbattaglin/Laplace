@@ -222,4 +222,11 @@ def preprocess_dataframe_for_modeling(
                     
         df[target_col] = y_clean
         
+    # 3. Safety Fallback: Ensure no NaNs or Infs remain in the target column
+    y_final = df[target_col].astype(float).values.copy()
+    if np.isnan(y_final).any() or np.isinf(y_final).any():
+        print("[Safety Fallback] Target column contains NaNs/Infs. Automatically applying linear interpolation to ensure pipeline convergence.")
+        y_final = handle_missing_values(y_final, method="linear")
+        df[target_col] = y_final
+        
     return df, variance_params

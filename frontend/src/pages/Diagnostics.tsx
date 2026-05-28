@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, AlertTriangle, TrendingUp, BarChart2, Calculator, ChevronRight, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import { Activity, AlertTriangle, TrendingUp, BarChart2, Calculator, ChevronRight, CheckCircle, XCircle, ChevronDown, ShieldAlert } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { runDiagnostics, cleanData, type DiagnosticsRequest, type DiagnosticsResponse } from '../lib/api';
 import clsx from 'clsx';
@@ -105,6 +105,12 @@ export default function Diagnostics() {
       setLoading(true);
       const res = await runDiagnostics(req);
       setData(res);
+      
+      // Auto-select linear interpolation if NaNs/missing values are detected
+      if (res.stats && res.stats.missing_pct > 0) {
+        setMissingMethod("linear");
+        setIsDataPrepOpen(true);
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -214,6 +220,23 @@ export default function Diagnostics() {
           Deep-dive analysis into the structural components and statistics of <span className="font-medium text-base-primary">{config.dataset_name}</span>.
         </p>
       </div>
+
+      {data.stats.missing_pct > 0 && (
+        <div className="p-5 bg-accent-warning/10 border border-accent-warning/35 rounded-2xl flex items-start gap-4 animate-in slide-in-from-top-4 duration-300">
+          <ShieldAlert className="text-accent-warning shrink-0 mt-0.5" size={24} />
+          <div className="space-y-1">
+            <h3 className="font-bold text-accent-warning text-sm uppercase tracking-wider">
+              {!isLab ? "Data Integrity Alert: Missing Values Found" : "Data Continuity Alert: Non-Finite Values Found"}
+            </h3>
+            <p className="text-xs text-base-secondary leading-relaxed">
+              {!isLab 
+                ? `We identified that ${config.dataset_name} has missing observations (${data.stats.missing_pct}% of the target values). To protect down-stream forecasting baseline models from failing, we have pre-configured a linear interpolator under the Data Prep panel below. Please review and apply it.`
+                : `LOESS STL decompositions, ADF unit-root testing, and state-space AutoARIMA formulations require mathematically continuous observations (${data.stats.missing_pct}% NaNs found). We have initialized a default linear interpolation step in the Data Prep widget below to ensure absolute sequence continuity.`
+              }
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="p-6 bg-white border border-base-secondary/20 rounded-2xl h-[400px] flex flex-col">
         <div className="flex items-center gap-2 mb-4">

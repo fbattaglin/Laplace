@@ -1,11 +1,36 @@
 import os
 import pandas as pd
+import math
+import numpy as np
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from heuristics import process_dataframe
+
+def sanitize_float_values(obj: Any) -> Any:
+    """
+    Recursively replaces NaN and Inf float values in lists and dicts with None/null
+    to prevent Uvicorn/JSON serialization crashes.
+    """
+    if isinstance(obj, dict):
+        return {k: sanitize_float_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_float_values(x) for x in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, np.ndarray):
+        return sanitize_float_values(obj.tolist())
+    elif isinstance(obj, (np.float32, np.float64)):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return float(obj)
+    elif isinstance(obj, (np.int32, np.int64)):
+        return int(obj)
+    return obj
 
 app = FastAPI(title="Laplace API")
 
@@ -114,7 +139,7 @@ def get_dataset(name: str):
     
     try:
         df = pd.read_csv(file_path)
-        return process_dataframe(df)
+        return sanitize_float_values(process_dataframe(df))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -132,7 +157,7 @@ async def upload_dataset(file: UploadFile = File(...)):
             df = pd.read_csv(file_location)
         else:
             df = pd.read_excel(file_location)
-        return process_dataframe(df)
+        return sanitize_float_values(process_dataframe(df))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
 
@@ -160,7 +185,7 @@ def run_diagnostics(req: DiagnosticsRequest):
         else:
             df = pd.read_excel(file_path)
             
-        return compute_diagnostics(df, req.date_col, req.target_col)
+        return sanitize_float_values(compute_diagnostics(df, req.date_col, req.target_col))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -196,7 +221,7 @@ def run_validation(req: ValidationRequest):
         else:
             df = pd.read_excel(file_path)
             
-        return run_backtest(
+        return sanitize_float_values(run_backtest(
             df, 
             req.date_col, 
             req.target_col, 
@@ -208,7 +233,7 @@ def run_validation(req: ValidationRequest):
             req.validation_type,
             req.num_splits,
             req.ensemble_config
-        )
+        ))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -236,7 +261,7 @@ def clean_data(req: CleanRequest):
             df = pd.read_excel(file_path)
             
         from data_cleaning import run_cleaning_pipeline
-        return run_cleaning_pipeline(df, req.date_col, req.target_col, req.config)
+        return sanitize_float_values(run_cleaning_pipeline(df, req.date_col, req.target_col, req.config))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -265,7 +290,7 @@ def detect_anomalies(req: AnomalyRequest):
             df = pd.read_excel(file_path)
             
         from anomaly import run_anomaly_detection
-        return run_anomaly_detection(df, req.date_col, req.target_col, req.method, req.threshold)
+        return sanitize_float_values(run_anomaly_detection(df, req.date_col, req.target_col, req.method, req.threshold))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -299,7 +324,7 @@ def generate_forecast(req: ForecastRequest):
         else:
             df = pd.read_excel(file_path)
             
-        return run_forecast(
+        return sanitize_float_values(run_forecast(
             df, 
             req.date_col, 
             req.target_col, 
@@ -309,7 +334,7 @@ def generate_forecast(req: ForecastRequest):
             req.cleaning_config,
             req.excluded_anomalies,
             req.ensemble_config
-        )
+        ))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
