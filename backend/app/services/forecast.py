@@ -277,5 +277,23 @@ def run_forecast(
             "mean": mean_pred,
             "lower": lower_pred,
             "upper": upper_pred
+        },
+        "science_metadata": {
+            "conformal_calibration": {
+                "applied": conformal_half_width is not None,
+                "method": "Quantile Absolute Residuals (EnbPI)",
+                "half_width": float(conformal_half_width) if conformal_half_width is not None else None,
+                "confidence_level_pct": 80.0,
+                "explanation": "Intervals calibrated using empirical absolute forecast residuals on a 20% validation split."
+            },
+            "changepoint_adaptation": {
+                "applied": True,
+                "shock_detected": shock_idx is not None,
+                "shock_index": int(shock_idx) if shock_idx is not None else None,
+                "shock_date": str(df_clean.iloc[shock_idx][date_col]) if shock_idx is not None else None,
+                "original_length": len(y),
+                "trimmed_length": len(y_fitted),
+                "explanation": "Evaluated trend segments using Binary Segmentation. Trimmed historical training window to the post-break regime to eliminate pre-shock bias."
+            }
         }
     }

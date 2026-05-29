@@ -279,6 +279,87 @@ export default function Forecast() {
         </ResponsiveContainer>
       </div>
 
+      {/* Principal Data Science Insights */}
+      {data.science_metadata && (
+        <div className="p-6 bg-gradient-to-r from-base-surface to-base-surface/50 border border-base-secondary/25 rounded-2xl shadow-sm animate-in fade-in duration-300">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="text-accent-pulse animate-pulse" size={22} />
+            <h3 className="text-xl font-bold text-base-primary">Principal Data Science Insights</h3>
+            <span className="px-2 py-0.5 text-[10px] font-bold bg-base-primary text-white rounded-full uppercase tracking-wider">
+              Sprint 1 Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Conformal Prediction Panel */}
+            <div className="p-4 bg-white/70 border border-base-secondary/15 rounded-xl space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-base-primary">Conformal Prediction Intervals</span>
+                <span className="px-2 py-0.5 text-[10px] font-semibold bg-accent-success/10 text-accent-success rounded-md">
+                  Active & Calibrated
+                </span>
+              </div>
+              <p className="text-xs text-base-secondary leading-relaxed">
+                {data.science_metadata.conformal_calibration.explanation}
+              </p>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <div className="text-[10px] text-base-secondary uppercase tracking-wider">Calibration Method</div>
+                  <div className="text-xs font-semibold text-base-primary mt-0.5">
+                    {data.science_metadata.conformal_calibration.method}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-base-secondary uppercase tracking-wider">Empirical Spread (80% CI)</div>
+                  <div className="text-xs font-bold text-accent-pulse mt-0.5">
+                    {data.science_metadata.conformal_calibration.half_width 
+                      ? `±${fmt(data.science_metadata.conformal_calibration.half_width, 1)}` 
+                      : "Using Baseline"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Changepoint Adaptation Panel */}
+            <div className="p-4 bg-white/70 border border-base-secondary/15 rounded-xl space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-base-primary">Changepoint-Aware Adaptation</span>
+                {data.science_metadata.changepoint_adaptation.shock_detected ? (
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-accent-warning/15 text-accent-warning rounded-md animate-pulse">
+                    ⚠ Structural Break Handled
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[10px] font-semibold bg-base-secondary/10 text-base-secondary rounded-md">
+                    Stable Trend
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-base-secondary leading-relaxed">
+                {data.science_metadata.changepoint_adaptation.explanation}
+              </p>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div>
+                  <div className="text-[10px] text-base-secondary uppercase tracking-wider">Regime Transition</div>
+                  <div className="text-xs font-semibold text-base-primary mt-0.5">
+                    {data.science_metadata.changepoint_adaptation.shock_detected 
+                      ? `Shock Date: ${data.science_metadata.changepoint_adaptation.shock_date}`
+                      : "No structural shock"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-base-secondary uppercase tracking-wider">Training Window Optimization</div>
+                  <div className="text-xs font-semibold text-base-primary mt-0.5">
+                    {data.science_metadata.changepoint_adaptation.shock_detected 
+                      ? `${data.science_metadata.changepoint_adaptation.original_length} pts → ${data.science_metadata.changepoint_adaptation.trimmed_length} pts`
+                      : `Full history (${data.science_metadata.changepoint_adaptation.original_length} pts) preserved`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Insight Cards — data-driven */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
 

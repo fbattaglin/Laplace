@@ -249,6 +249,24 @@ export interface ForecastResponse {
     lower: number[];
     upper: number[];
   };
+  science_metadata?: {
+    conformal_calibration: {
+      applied: boolean;
+      method: string;
+      half_width: number | null;
+      confidence_level_pct: number;
+      explanation: string;
+    };
+    changepoint_adaptation: {
+      applied: boolean;
+      shock_detected: boolean;
+      shock_index: number | null;
+      shock_date: string | null;
+      original_length: number;
+      trimmed_length: number;
+      explanation: string;
+    };
+  };
 }
 
 export async function runForecast(req: ForecastRequest): Promise<ForecastResponse> {
