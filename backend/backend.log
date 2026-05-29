@@ -1,61 +1,202 @@
 INFO:     Will watch for changes in these directories: ['/Users/fabiano/My_Code/Laplace_v2/backend']
+2026-05-28 21:21:29,061 [INFO] laplace: Structured logging system initialized successfully.
+2026-05-28 21:21:29,063 [INFO] laplace.main: FastAPI service routers mapped and active.
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [55861] using WatchFiles
-INFO:     Started server process [55928]
+INFO:     Started reloader process [55733] using WatchFiles
+2026-05-28 21:21:30,707 [INFO] laplace: Structured logging system initialized successfully.
+2026-05-28 21:21:30,709 [INFO] laplace.main: FastAPI service routers mapped and active.
+INFO:     Started server process [55760]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:61750 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61751 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61751 - "GET /api/datasets/supply_chain_inventory HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61751 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61763 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61751 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61763 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61768 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61769 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61769 - "GET /api/datasets/marketing_roi HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61861 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61862 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61867 - "OPTIONS /api/clean HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61867 - "POST /api/clean HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61881 - "OPTIONS /api/validation HTTP/1.1" 200 OK
+2026-05-28 21:21:31,985 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:51900 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:21:31,986 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:51901 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:21:44,453 [INFO] laplace.routers.datasets: Successfully uploaded and parsed: crude_oil_prices.xlsx
+INFO:     127.0.0.1:51933 - "POST /api/upload HTTP/1.1" 200 OK
+2026-05-28 21:21:44,468 [INFO] watchfiles.main: 1 change detected
+INFO:     127.0.0.1:51946 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51947 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:21:54,545 [INFO] laplace.routers.diagnostics: Computing diagnostics for: crude_oil_prices.xlsx, date_col: Date, target_col: Price_USD
+2026-05-28 21:21:54,554 [INFO] laplace.routers.diagnostics: Computing diagnostics for: crude_oil_prices.xlsx, date_col: Date, target_col: Price_USD
+2026-05-28 21:21:54,764 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:51946 - "POST /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:21:54,769 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:51947 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51956 - "OPTIONS /api/validation HTTP/1.1" 200 OK
+2026-05-28 21:22:04,122 [INFO] laplace.routers.validation: Triggering backtest validation. Type: holdout, splits: 1, models: ['Chronos-2', 'TimesFM-200M', 'AutoARIMA', 'AutoETS', 'AutoTheta', 'SeasonalNaive', 'RandomWalkWithDrift', 'HistoricAverage']
+2026-05-28 21:22:04,125 [INFO] laplace.services.cleaning: Excluded and interpolated 4 anomaly indices.
+2026-05-28 21:22:07,472 [INFO] laplace.core.model_registry: Lazy loading amazon/chronos-2 into registry...
 `torch_dtype` is deprecated! Use `dtype` instead!
 `torch_dtype` is deprecated! Use `dtype` instead!
 /Users/fabiano/My_Code/Laplace_v2/backend/.venv/lib/python3.12/site-packages/chronos/chronos2/dataset.py:99: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /Users/runner/work/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:219.)
   target = torch.from_numpy(target)
-Lazy loading amazon/chronos-2 into registry...
-Lazy loading TimesFM-200M into registry...
+2026-05-28 21:22:10,022 [INFO] laplace.core.model_registry: Lazy loading TimesFM-200M into registry...
  See https://github.com/google-research/timesfm/blob/master/README.md for updated APIs.
 Loaded PyTorch TimesFM, likely because python version is 3.12.13 (main, Mar 10 2026, 18:18:07) [Clang 21.1.4 ].
-Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 73584.28it/s]
-INFO:     127.0.0.1:61881 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61906 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61907 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61906 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61907 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61915 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61916 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61921 - "POST /api/upload HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61939 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61938 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62002 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62037 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62038 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62056 - "POST /api/clean HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62067 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62084 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62083 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62089 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62090 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62096 - "GET /api/datasets/agriculture_yield HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62109 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62110 - "OPTIONS /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62110 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62109 - "POST /api/diagnostics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62126 - "POST /api/validation HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62141 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62142 - "POST /api/forecast HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62150 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62152 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62165 - "GET /api/datasets HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62166 - "GET /api/datasets HTTP/1.1" 200 OK
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 83886.08it/s]
+2026-05-28 21:22:10,697 [INFO] root: Loading checkpoint from /Users/fabiano/.cache/huggingface/hub/models--google--timesfm-1.0-200m-pytorch/snapshots/0581e2c56cb06feb51cfd98fc2b4005b74f7187b/torch_model.ckpt
+2026-05-28 21:22:10,862 [INFO] root: Sending checkpoint to device cpu
+2026-05-28 21:22:10,896 [INFO] laplace.services.validation: Backtest validation successful. Completed 1 splits using holdout.
+INFO:     127.0.0.1:51956 - "POST /api/validation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51974 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51975 - "OPTIONS /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:22:21,503 [INFO] laplace.routers.forecast: Generating true future forecast using model: Ensemble, horizon: 12
+2026-05-28 21:22:21,513 [INFO] laplace.routers.forecast: Generating true future forecast using model: Ensemble, horizon: 12
+2026-05-28 21:22:21,515 [INFO] laplace.services.cleaning: Excluded and interpolated 4 anomaly indices.
+2026-05-28 21:22:21,518 [INFO] laplace.services.cleaning: Excluded and interpolated 4 anomaly indices.
+2026-05-28 21:22:21,819 [WARNING] laplace.services.conformal: Could not get single model forecast for conformal calibration: Ensemble
+2026-05-28 21:22:21,856 [WARNING] laplace.services.conformal: Could not get single model forecast for conformal calibration: Ensemble
+2026-05-28 21:22:21,859 [INFO] laplace.services.forecast: Forecast complete for model: Ensemble, horizon: 12
+2026-05-28 21:22:21,859 [INFO] laplace.services.forecast: Forecast complete for model: Ensemble, horizon: 12
+INFO:     127.0.0.1:51975 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51974 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:22:21,939 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:22:29,334 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:51978 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:22:29,336 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:51980 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51980 - "GET /api/datasets/supply_chain_inventory HTTP/1.1" 200 OK
+2026-05-28 21:22:42,804 [INFO] laplace.routers.diagnostics: Computing diagnostics for: supply_chain_inventory, date_col: Week, target_col: Inventory_Level
+2026-05-28 21:22:42,809 [INFO] laplace.routers.diagnostics: Computing diagnostics for: supply_chain_inventory, date_col: Week, target_col: Inventory_Level
+2026-05-28 21:22:42,962 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:51993 - "POST /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:22:42,964 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:51994 - "POST /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:23:35,238 [INFO] laplace.routers.validation: Triggering backtest validation. Type: walk_forward, splits: 3, models: ['Chronos-2', 'TimesFM-200M', 'AutoARIMA', 'AutoETS', 'AutoTheta', 'SeasonalNaive', 'RandomWalkWithDrift', 'HistoricAverage']
+2026-05-28 21:23:35,242 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:23:38,564 [INFO] laplace.services.validation: Backtest validation successful. Completed 3 splits using walk_forward.
+INFO:     127.0.0.1:52021 - "POST /api/validation HTTP/1.1" 200 OK
+2026-05-28 21:24:22,795 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:24:22,796 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:24:22,800 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:24:22,802 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:24:23,218 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=98.1193, level=80.0%)
+2026-05-28 21:24:23,218 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=98.1193, level=80.0%)
+2026-05-28 21:24:23,219 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52054 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:24:23,220 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52055 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:24:23,297 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:24:46,604 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52064 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:24:46,606 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52065 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52070 - "GET /api/datasets/us_retail_sales HTTP/1.1" 200 OK
+2026-05-28 21:25:00,693 [INFO] laplace.routers.diagnostics: Computing diagnostics for: us_retail_sales, date_col: Date, target_col: Sales_Millions
+2026-05-28 21:25:00,694 [INFO] laplace.routers.diagnostics: Computing diagnostics for: us_retail_sales, date_col: Date, target_col: Sales_Millions
+2026-05-28 21:25:00,854 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:52070 - "POST /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:25:00,856 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:52080 - "POST /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:25:21,619 [INFO] laplace.routers.validation: Triggering backtest validation. Type: holdout, splits: 1, models: ['Chronos-2', 'TimesFM-200M', 'AutoARIMA', 'AutoETS', 'AutoTheta', 'SeasonalNaive', 'RandomWalkWithDrift', 'HistoricAverage']
+2026-05-28 21:25:21,624 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:25:21,633 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 190 (2020-11-01 00:00:00). Mean shift: 2.12 std. Trimming training history to post-break regime (54 points remaining).
+2026-05-28 21:25:21,945 [INFO] laplace.services.validation: Backtest validation successful. Completed 1 splits using holdout.
+INFO:     127.0.0.1:52095 - "POST /api/validation HTTP/1.1" 200 OK
+2026-05-28 21:25:28,980 [INFO] laplace.routers.validation: Triggering backtest validation. Type: holdout, splits: 1, models: ['Chronos-2', 'TimesFM-200M', 'AutoARIMA', 'AutoETS', 'AutoTheta', 'SeasonalNaive', 'RandomWalkWithDrift', 'HistoricAverage']
+2026-05-28 21:25:28,984 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:25:28,994 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 190 (2020-11-01 00:00:00). Mean shift: 2.12 std. Trimming training history to post-break regime (54 points remaining).
+2026-05-28 21:25:29,264 [INFO] laplace.services.validation: Backtest validation successful. Completed 1 splits using holdout.
+INFO:     127.0.0.1:52097 - "POST /api/validation HTTP/1.1" 200 OK
+2026-05-28 21:25:32,096 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:25:32,097 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:25:32,101 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:25:32,105 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:25:32,113 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:25:32,118 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:25:32,449 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:25:32,450 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:25:32,451 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+2026-05-28 21:25:32,451 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52107 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52097 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:25:32,546 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:27:38,185 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52184 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:27:38,187 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52186 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:28:10,843 [INFO] watchfiles.main: 1 change detected
+WARNING:  WatchFiles detected changes in 'app/services/forecast.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [55760]
+2026-05-28 21:28:11,486 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:28:13,168 [INFO] laplace: Structured logging system initialized successfully.
+2026-05-28 21:28:13,170 [INFO] laplace.main: FastAPI service routers mapped and active.
+INFO:     Started server process [55971]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-05-28 21:28:13,268 [INFO] watchfiles.main: 3 changes detected
+2026-05-28 21:28:55,134 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52236 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:28:55,136 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52237 - "GET /api/datasets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52237 - "GET /api/datasets/us_retail_sales HTTP/1.1" 200 OK
+2026-05-28 21:29:03,100 [INFO] laplace.routers.diagnostics: Computing diagnostics for: us_retail_sales, date_col: Date, target_col: Sales_Millions
+2026-05-28 21:29:03,104 [INFO] laplace.routers.diagnostics: Computing diagnostics for: us_retail_sales, date_col: Date, target_col: Sales_Millions
+2026-05-28 21:29:03,261 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+2026-05-28 21:29:03,261 [INFO] laplace.services.diagnostics: Diagnostics and statistical EDA computation complete.
+INFO:     127.0.0.1:52255 - "POST /api/diagnostics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52237 - "POST /api/diagnostics HTTP/1.1" 200 OK
+2026-05-28 21:29:23,609 [INFO] laplace.routers.validation: Triggering backtest validation. Type: holdout, splits: 1, models: ['Chronos-2', 'TimesFM-200M', 'AutoARIMA', 'AutoETS', 'AutoTheta', 'SeasonalNaive', 'RandomWalkWithDrift', 'HistoricAverage']
+2026-05-28 21:29:23,614 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:29:23,623 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 190 (2020-11-01 00:00:00). Mean shift: 2.12 std. Trimming training history to post-break regime (54 points remaining).
+2026-05-28 21:29:23,825 [INFO] laplace.core.model_registry: Lazy loading amazon/chronos-2 into registry...
+`torch_dtype` is deprecated! Use `dtype` instead!
+`torch_dtype` is deprecated! Use `dtype` instead!
+/Users/fabiano/My_Code/Laplace_v2/backend/.venv/lib/python3.12/site-packages/chronos/chronos2/dataset.py:99: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /Users/runner/work/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:219.)
+  target = torch.from_numpy(target)
+2026-05-28 21:29:26,177 [INFO] laplace.core.model_registry: Lazy loading TimesFM-200M into registry...
+ See https://github.com/google-research/timesfm/blob/master/README.md for updated APIs.
+Loaded PyTorch TimesFM, likely because python version is 3.12.13 (main, Mar 10 2026, 18:18:07) [Clang 21.1.4 ].
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files: 100%|██████████| 3/3 [00:00<00:00, 76260.07it/s]
+2026-05-28 21:29:26,834 [INFO] root: Loading checkpoint from /Users/fabiano/.cache/huggingface/hub/models--google--timesfm-1.0-200m-pytorch/snapshots/0581e2c56cb06feb51cfd98fc2b4005b74f7187b/torch_model.ckpt
+2026-05-28 21:29:27,004 [INFO] root: Sending checkpoint to device cpu
+2026-05-28 21:29:27,038 [INFO] laplace.services.validation: Backtest validation successful. Completed 1 splits using holdout.
+INFO:     127.0.0.1:52270 - "POST /api/validation HTTP/1.1" 200 OK
+2026-05-28 21:29:36,950 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:29:36,952 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:29:36,959 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:29:36,961 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:29:36,969 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:29:36,974 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:29:37,205 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:29:37,206 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:29:37,207 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+2026-05-28 21:29:37,208 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52284 - "POST /api/forecast HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52285 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:29:37,286 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:30:28,264 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:30:28,266 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:30:28,270 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:30:28,273 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:30:28,280 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:30:28,285 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:30:28,391 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:30:28,392 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:30:28,392 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52309 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:30:28,394 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52310 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:30:28,498 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:31:25,939 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:31:25,945 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:31:25,954 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:31:25,957 [INFO] laplace.routers.forecast: Generating true future forecast using model: Chronos-2, horizon: 12
+2026-05-28 21:31:25,960 [INFO] laplace.services.cleaning: Excluded and interpolated 5 anomaly indices.
+2026-05-28 21:31:25,965 [WARNING] laplace.services.changepoint_adaptation: ⚠️ DETECTED SEVERE STRUCTURAL SHOCK at index 205 (2022-02-01 00:00:00). Mean shift: 2.10 std. Trimming training history to post-break regime (51 points remaining).
+2026-05-28 21:31:26,093 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:31:26,094 [INFO] laplace.services.conformal: Conformal prediction successfully calibrated for model Chronos-2 (width=10725.1250, level=80.0%)
+2026-05-28 21:31:26,095 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52344 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:31:26,096 [INFO] laplace.services.forecast: Forecast complete for model: Chronos-2, horizon: 12
+INFO:     127.0.0.1:52343 - "POST /api/forecast HTTP/1.1" 200 OK
+2026-05-28 21:31:26,214 [INFO] watchfiles.main: 1 change detected
+2026-05-28 21:31:31,383 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52347 - "GET /api/datasets HTTP/1.1" 200 OK
+2026-05-28 21:31:31,385 [INFO] laplace.routers.datasets: Listing reference benchmark datasets.
+INFO:     127.0.0.1:52348 - "GET /api/datasets HTTP/1.1" 200 OK
+ reference benchmark datasets.
