@@ -170,6 +170,36 @@ export default function DataInput() {
     }
   };
 
+  const handleDateColChange = (newCol: string) => {
+    if (!data) return;
+    const updatedData = { ...data, suggested_date_col: newCol };
+    setData(updatedData);
+    
+    const saved = localStorage.getItem('laplace_dataset');
+    let parsed = saved ? JSON.parse(saved) : {};
+    parsed.date_col = newCol;
+    parsed.dataset_type = parsed.dataset_type || (activeDataset?.endsWith('.csv') || activeDataset?.endsWith('.xlsx') ? 'upload' : 'reference');
+    parsed.dataset_name = parsed.dataset_name || activeDataset;
+    parsed.target_col = parsed.target_col || data.suggested_target_col;
+    
+    localStorage.setItem('laplace_dataset', JSON.stringify(parsed));
+  };
+
+  const handleTargetColChange = (newCol: string) => {
+    if (!data) return;
+    const updatedData = { ...data, suggested_target_col: newCol };
+    setData(updatedData);
+    
+    const saved = localStorage.getItem('laplace_dataset');
+    let parsed = saved ? JSON.parse(saved) : {};
+    parsed.target_col = newCol;
+    parsed.dataset_type = parsed.dataset_type || (activeDataset?.endsWith('.csv') || activeDataset?.endsWith('.xlsx') ? 'upload' : 'reference');
+    parsed.dataset_name = parsed.dataset_name || activeDataset;
+    parsed.date_col = parsed.date_col || data.suggested_date_col;
+    
+    localStorage.setItem('laplace_dataset', JSON.stringify(parsed));
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
@@ -321,11 +351,29 @@ export default function DataInput() {
             <div className="flex gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Date Col:</span>
-                <span className="font-medium px-2 py-1 bg-base-surface rounded-md border border-base-secondary/20 shadow-sm">{data.suggested_date_col || 'Not detected'}</span>
+                <select
+                  value={data.suggested_date_col || ''}
+                  onChange={(e) => handleDateColChange(e.target.value)}
+                  className="font-medium px-2 py-1 bg-white text-base-primary rounded-md border border-base-secondary/20 shadow-sm focus:outline-none focus:ring-1 focus:ring-accent-pulse cursor-pointer text-xs"
+                >
+                  <option value="" disabled>Select Date Col</option>
+                  {data.columns.map(col => (
+                    <option key={col} value={col}>{col}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Target Col:</span>
-                <span className="font-medium px-2 py-1 bg-base-surface rounded-md border border-base-secondary/20 shadow-sm text-accent-pulse">{data.suggested_target_col || 'Not detected'}</span>
+                <select
+                  value={data.suggested_target_col || ''}
+                  onChange={(e) => handleTargetColChange(e.target.value)}
+                  className="font-medium px-2 py-1 bg-white text-accent-pulse rounded-md border border-base-secondary/20 shadow-sm focus:outline-none focus:ring-1 focus:ring-accent-pulse cursor-pointer text-xs"
+                >
+                  <option value="" disabled>Select Target Col</option>
+                  {data.columns.filter(col => col !== data.suggested_date_col).map(col => (
+                    <option key={col} value={col}>{col}</option>
+                  ))}
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-base-secondary">Rows:</span>

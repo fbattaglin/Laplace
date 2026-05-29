@@ -45,9 +45,12 @@ def detect_columns(df: pd.DataFrame) -> tuple[str | None, str | None]:
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if date_col in numeric_cols:
         numeric_cols.remove(date_col)
+        
+    # Exclude automatically engineered calendar features from target column candidates
+    numeric_cols = [col for col in numeric_cols if not col.startswith("calendar_")]
 
     if numeric_cols:
-        target_keywords = ['target', 'value', 'y', 'sales', 'demand', 'price', 'qty', 'quantity', 'passengers', 'yield', 'mrr', 'level', 'cpi', 'views', 'volume']
+        target_keywords = ['target', 'value', 'y', 'sales', 'demand', 'price', 'qty', 'quantity', 'passengers', 'yield', 'mrr', 'level', 'cpi', 'views', 'volume', 'close']
         for col in numeric_cols:
             if any(keyword in col.lower() for keyword in target_keywords):
                 target_col = col
