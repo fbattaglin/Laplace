@@ -1,72 +1,86 @@
 <div align="center">
   <img src="frontend/public/logo-header.png" alt="Laplace Logo" width="120" />
   <h1>Laplace V2</h1>
-  <p><b>Foundation Model Forecasting for the Boardroom</b></p>
+  <p><b>The Uncompromising Time-Series Forecasting Sandbox & Laboratory</b></p>
 </div>
 
 ---
 
-**Laplace** is a desktop-first, full-stack application designed to answer a single question with absolute rigor: *What is the most accurate way to predict the future of this time series?*
+**Laplace** is a desktop-first, full-stack time-series laboratory designed to treat predictive analytics as a rigorous, empirical science. 
 
-Named after [Laplace's Demon](https://en.wikipedia.org/wiki/Laplace%27s_demon), this app bridges the gap between hardcore data science labs and executive boardrooms. It pits zero-shot Foundation Models (**Google TimesFM, Amazon Chronos**) against battle-tested statistical baselines (**ETS, Theta, Seasonal Naive**) in a rigorous, zero-leakage backtest—all wrapped in a vibrant, minimalist, zero-friction UI.
+Named after [Laplace's Demon](https://en.wikipedia.org/wiki/Laplace%27s_demon), this application is a **forecasting sandbox** for data scientists and principal analysts. It pits zero-shot Deep Learning Foundation Models (**Google TimesFM, Amazon Chronos**) against classic statistical engines (**AutoARIMA, AutoETS, Theta, Seasonal Naive**) in a rigorous, zero-leakage backtest—fully equipped with real-time exogenous What-If simulations, conformal calibration safeguards, and structural break adaptation.
 
-## 🧠 Why Laplace?
+---
 
-Most forecasting tools are either too simple (ignoring confidence intervals and signal validation) or too complex (requiring 50 lines of Python just to see a trend). Laplace is built differently:
+## 🧠 Core Laboratory Features
 
-- **Smart Heuristics & Real-World Scenarios:** Drop a CSV or select from our hardcore benchmark suite (S&P 500, VIX, Walmart M5 Demand, National Grid). Laplace auto-detects temporal indices and targets.
-- **The Principal Data Analyst Lab (EDA):** Decompose the signal (STL), calculate Autocorrelation (ACF/PACF), compute heavy-tailed statistics (Skewness, Kurtosis), and identify Trend Changepoints (Ruptures). Seamlessly toggle between **Boardroom Didactics** (business-friendly, value-driven copy) and **Lab Didactics** (uncompromising, hardcore mathematical explanations) across all diagnostic views.
-- **Interactive Data Prep & Auto-Inversion:** Handle missing values via linear interpolation, dynamically exclude Isolation Forest anomalies (interactive checkbox outliers), and apply variance-stabilizing transformations (Log, Box-Cox). Preprocessing states are automatically propagated to validation and forecasting backends where they are mathematically inverted—ensuring error metrics (sMAPE, MAE) and charts are rendered strictly in the original target scale.
-- **Active Exogenous Covariate Impact Analyzer:** Analyze predictive strength using Pearson correlation coefficients ($r$) mapped on high-contrast dual-sided sliders. Identify weak drivers ($|r| < 0.2$) with built-in noise alerts, and dynamically include or exclude features from covariate-capable models (e.g., Chronos-2) with active toggle controls.
-- **Foundation Models vs. The Classics:** Automatically backtest zero-shot Deep Learning architectures (`google/timesfm-1.0-200m`, `amazon/chronos-bolt-base`, `amazon/chronos-t5` vs. classical baselines like `AutoETS` and `AutoTheta`) using a rolling-origin validation engine. PyTorch automatically leverages Apple MPS/CUDA acceleration if available.
-- **Export Studio:** The winning architecture projects future quantiles (80% Confidence Intervals) ready for executive reviews. Customize CSV exports, include/exclude history, and copy a fully reproducible Pandas snippet to recreate the visualization inside Jupyter notebooks.
+Most forecasting tools are either too simple (ignoring confidence intervals and signal validation) or too complex (requiring hundreds of lines of boilerplate Python). Laplace is an interactive, visual sandbox designed for rigorous scientific experimentation:
 
-## 🏗 Architecture
+### 1. Hardcore Diagnostics & EDA (Step 2)
+- **Signal Decomposition:** Break down time series into Observed, Trend, Seasonal, and Residual components using STL.
+- **Statistical Moments:** Compute heavy-tailed indicators (Skewness, Kurtosis) alongside stationarity metrics (Augmented Dickey-Fuller p-values).
+- **Hardcore Didactics Toggle:** Instantly switch between **Boardroom Didactics** (executive-friendly, value-oriented explanations) and **Lab Didactics** (uncompromising, peer-level mathematical formulas and proofs) across all views.
+- **Temporal Changepoints:** Identify sudden structural breaks using Ruptures binary segmentation.
 
-Laplace is built on a modern, decoupled stack prioritizing speed and visual excellence:
+### 2. Preprocessing & Auto-Inversion
+- **Outlier Pruning:** Interactively check and exclude anomalies detected via Isolation Forests.
+- **Variance Stabilization:** Apply Logarithmic or Box-Cox transformations. 
+- **Auto-Inversion Pipeline:** Preprocessing states are automatically propagated to validation and forecasting backends. Error metrics (sMAPE, MASE) and charts are rendered strictly in the original target scale by performing automatic mathematical inversion.
+
+### 3. Exogenous Covariate Impact Analyzer
+- **Correlation Mapping:** Analyze exogenous driver strength using Pearson correlation coefficients ($r$) on high-contrast sliders.
+- **Dynamic Selection:** Filter out weak drivers ($|r| < 0.2$) with noise alerts, and selectively ingest relevant features.
+- **Calendar & Holiday Feature Engineering:** Automatically detect Date indices on upload and engineer zero-dependency binary weekend (`calendar_is_weekend`) and national holiday (`calendar_is_holiday`) covariates using native calendar matrices.
+
+### 4. Empirical Calibration & Regime Controls (Step 4)
+- **Conformal Prediction Intervals:** Calibrates forecast boundaries to guarantee correct empirical coverage (80% level) using Quantile Absolute Residuals (EnbPI) over rolling validation splits.
+- **Changepoint-Aware Adaptive Training:** Mitigates pre-shock parameter bias by automatically trimming historical training windows to focus strictly on the post-structural break regime.
+
+### 5. Interactive What-If Scenario Simulation Studio
+- **Glassmorphic Timeline Slider Deck:** Drag timeline range sliders step-by-step to customize future covariate values (e.g. Doubling Ad Spend).
+- **Blazing-Fast ARIMAX Engine:** Leverages StatsForecast's `AutoARIMA` for near-instantaneous (<150ms debounced) re-forecasting.
+- **Dual-Curve Visualizations:** Directly overlays the baseline forecast (solid line) with the simulated scenario (dotted emerald line, emerald-shaded confidence interval, and simulated tooltips).
+- **Dynamic Elasticity Sensitivity:** Renders real-time didactics showing the live Dynamic Multiplier (calculated shift in Target per unit adjustment in Covariate).
+
+### 6. Zero-Leakage Leaderboards & Export Studio
+- **Leaderboard Rankings:** Pits zero-shot architectures against classical baselines in a rolling-origin validation split, ranking models strictly by sMAPE.
+- **Export Center:** Tailor forecasts, export boardroom-ready CSVs, and copy fully reproducible Pandas/PyTorch code snippets to reconstruct the exact model parameters inside Jupyter notebooks.
+
+---
+
+## 🏗 Decoupled Architecture
+
+Laplace prioritizes high-fidelity visuals and raw execution speed:
 
 ### Engine (Backend)
-- **FastAPI** — High-performance async API.
-- **uv** — Lightning-fast Python package and environment manager.
-- **StatsForecast** (`Nixtla`) — Blazing fast C++ implementations of classical baselines.
-- **TimesFM & Chronos** (`Google/Amazon`) — Deep learning zero-shot forecasting via PyTorch/HuggingFace.
-- **Scikit-Learn & Ruptures** — State-of-the-art anomaly and changepoint detection.
+- **FastAPI** — High-speed asynchronous Python server.
+- **uv** — Lightning-fast dependency and virtual environment manager.
+- **StatsForecast** (`Nixtla`) — Blazing fast C++-optimized classical engines.
+- **TimesFM & Chronos** — Zero-shot neural forecasting models via PyTorch.
+- **Scikit-Learn & Ruptures** — Isolation Forest anomaly isolation and structural breakpoint segmentation.
 
 ### Interface (Frontend)
-- **React 18 + Vite** — Snappy SPA navigation.
-- **Tailwind CSS** — Custom *Vibrant Minimalist* design system (High contrast, electric accents).
+- **React 18 + Vite** — Snappy single-page architecture.
+- **Tailwind CSS** — Vibrant minimalist design system utilizing high-contrast translucent elements and glassmorphic panels.
 - **Recharts** — Performant, customized D3-based SVG charts.
-- **Lucide** — Clean, modern iconography.
+- **Lucide** — Clean, modern developer iconography.
 
-## 🚀 Getting Started
+---
+
+## 🚀 Running Laplace locally
 
 ### Prerequisites
 - Node.js (v18+)
 - Python (v3.10+)
 - [uv](https://github.com/astral-sh/uv) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
-### Quick Start
-To launch the entire platform (Backend + Frontend) cleanly in a single terminal:
+### Booting the Stack
+To launch both the FastAPI backend and the React frontend in a single command, execute the startup script from the root directory:
 
 ```bash
-# In the root of the project
 ./start.sh
 ```
 
-The script will automatically:
-1. Kill any stale background processes (uvicorn/vite)
-2. Boot the FastAPI engine
-3. Boot the React interface
-4. Listen for `Ctrl+C` to gracefully shutdown both
+The script will automatically kill any stale ports, boot the FastAPI engine, launch the Vite dev server, and orchestrate graceful shutdowns upon receiving `Ctrl+C`.
 
-The app will be available at `http://localhost:5173`.
-
-## 🧪 The Workflow
-
-1. **Input:** Select a rigorous benchmark (Economics, Demand, Supply) or upload your own chaotic dataset.
-2. **Diagnostics & EDA:** Clean missing values, prune Isolation Forest anomalies, and apply variance-stabilizing transforms (Log, Box-Cox). Switch between Boardroom/Lab copies to align your strategy, and filter out low-correlation exogenous drivers using the Covariate Impact Analyzer.
-3. **Validation:** Laplace splits your data, applies your selected preprocessing configuration, backtests Google and Amazon models alongside classical baselines, automatically applies inverse-variance mathematics, and ranks them on the leaderboard by sMAPE.
-4. **Forecast & Export Studio:** The winning model generates the final future forecast. Laplace automatically inverts all transforms to show original-scale data, allows high-fidelity visual exploration, and provides courtroom-grade reproducible Pandas snippets and boardroom-ready CSVs.
-
-## 📜 License
-MIT License. Built for forecasting enthusiasts.
+Access the sandbox at: `http://localhost:5173`.
