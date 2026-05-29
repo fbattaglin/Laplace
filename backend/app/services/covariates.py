@@ -60,3 +60,31 @@ def align_covariates(
         "past_covariates": past_covariates,
         "columns": valid_cols
     }
+
+def add_calendar_features(df: pd.DataFrame, date_col: str, country: str = "US") -> pd.DataFrame:
+    """
+    Automatically engineers calendar features from the date column using native Pandas:
+    - calendar_is_weekend: 1 if Saturday or Sunday, else 0
+    - calendar_is_holiday: 1 if official US Federal Holiday, else 0
+    """
+    df = df.copy()
+    try:
+        dates = pd.to_datetime(df[date_col])
+        df["calendar_is_weekend"] = dates.dt.dayofweek.isin([5, 6]).astype(float)
+        
+        # Built-in US Federal Holidays from Pandas (zero external dependencies)
+        from pandas.tseries.holiday import USFederalHolidayCalendar
+        cal = USFederalHolidayCalendar()
+        hol_dates = cal.holidays(start=dates.min(), end=dates.max())
+        # Convert to DatetimeIndex to ensure timezone-naive comparison matches perfectly
+        df["calendar_is_holiday"] = dates.dt.normalize().isin(hol_dates).astype(float)
+        
+    except Exception as e:
+        import logging
+        logging.getLogger("laplace.services.covariates").error(f"Failed to engineer calendar features: {e}")
+        if "calendar_is_weekend" not in df.columns:
+            df["calendar_is_weekend"] = 0.0
+        if "calendar_is_holiday" not in df.columns:
+            df["calendar_is_holiday"] = 0.0
+            
+    return df

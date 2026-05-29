@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Rocket, ChevronRight, TrendingUp, TrendingDown, Minus, ShieldAlert, BarChart2, Activity, Printer } from 'lucide-react';
 import { Line, Area, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { runForecast, type ForecastRequest, type ForecastResponse } from '../lib/api';
+import { runForecast, loadDataset, type ForecastRequest, type ForecastResponse, type DatasetResponse } from '../lib/api';
 import clsx from 'clsx';
 import { useMode } from '../context/ModeContext';
 
@@ -32,6 +32,14 @@ export default function Forecast() {
   const [isOverride, setIsOverride] = useState(false);
   const [recommendedWinner, setRecommendedWinner] = useState<string | null>(null);
   const [modelMetrics, setModelMetrics] = useState<ModelMetrics | null>(null);
+
+  const [datasetDetails, setDatasetDetails] = useState<DatasetResponse | null>(null);
+  const [futureCovariates, setFutureCovariates] = useState<Record<string, number[]>>({});
+  const [simulatedData, setSimulatedData] = useState<ForecastResponse | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [activeCovariateTab, setActiveCovariateTab] = useState<string>('');
+  const [isWhatIfOpen, setIsWhatIfOpen] = useState(true);
+  const prevDatasetName = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('laplace_dataset');
@@ -95,6 +103,11 @@ export default function Forecast() {
         };
         setConfig(reqConfig);
         loadForecast(reqConfig);
+        if (parsed.dataset_name) {
+          loadDataset(parsed.dataset_name)
+            .then(setDatasetDetails)
+            .catch((e) => console.error("Failed to load dataset details on mount", e));
+        }
       } catch (e) {
         setLoading(false);
       }
@@ -115,6 +128,90 @@ export default function Forecast() {
       setLoading(false);
     }
   };
+
+  // Initialize futureCovariates when data & datasetDetails become available
+  useEffect(() => {
+    if (!config || !data || !datasetDetails) return;
+    
+    const datasetName = config.dataset_name;
+    const activeCovs = config.covariate_cols || [];
+    const horizon = data.horizon;
+    
+    if (prevDatasetName.current !== datasetName && activeCovs.length > 0) {
+      prevDatasetName.current = datasetName;
+      
+      const lastRow = datasetDetails.chart_data?.[datasetDetails.chart_data.length - 1];
+      const initialFutureCovs: Record<string, number[]> = {};
+      
+      activeCovs.forEach((col: string) => {
+        const val = lastRow && typeof lastRow[col] === 'number' ? lastRow[col] : 0;
+        initialFutureCovs[col] = Array(horizon).fill(val);
+      });
+      
+      setFutureCovariates(initialFutureCovs);
+      if (activeCovs.length > 0) {
+        setActiveCovariateTab(activeCovs[0]);
+      }
+    }
+  }, [config, data, datasetDetails]);
+
+  // Debounced Simulation recalculation
+  useEffect(() => {
+    if (!config || !data || Object.keys(futureCovariates).length === 0) {
+      setSimulatedData(null);
+      return;
+    }
+
+    const activeCovs = config.covariate_cols || [];
+    if (activeCovs.length === 0) {
+      setSimulatedData(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSimulating(true);
+        const req = {
+          ...config,
+          future_covariates: futureCovariates
+        };
+        const res = await runForecast(req);
+        setSimulatedData(res);
+      } catch (err: any) {
+        console.error("Simulation failed:", err);
+      } finally {
+        setIsSimulating(false);
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [futureCovariates, config, data]);
+
+  const getSensitivityMultiplier = () => {
+    if (!simulatedData || !data || !config?.covariate_cols || config.covariate_cols.length === 0) return null;
+    const activeCov = activeCovariateTab;
+    if (!activeCov) return null;
+
+    const baseForecastSum = data.forecast.mean.reduce((a, b) => a + b, 0);
+    const simForecastSum = simulatedData.forecast.mean.reduce((a, b) => a + b, 0);
+    const dY = simForecastSum - baseForecastSum;
+
+    // Calculate baseline X sum (h steps of the last known value)
+    const lastRow = datasetDetails?.chart_data?.[datasetDetails.chart_data.length - 1];
+    if (!lastRow) return null;
+    const baseVal = typeof lastRow[activeCov] === 'number' ? lastRow[activeCov] : 0;
+    const h = data.horizon;
+    const baseValSum = baseVal * h;
+
+    const simValSum = futureCovariates[activeCov]?.reduce((a, b) => a + b, 0) || 0;
+    const dX = simValSum - baseValSum;
+
+    if (Math.abs(dX) < 1e-4) return 0;
+    return dY / dX;
+  };
+
+  const hasWeekendFeature = datasetDetails?.columns?.includes('calendar_is_weekend');
+  const hasHolidayFeature = datasetDetails?.columns?.includes('calendar_is_holiday');
 
   if (!config) {
     return (
@@ -185,7 +282,9 @@ export default function Forecast() {
     chartData.push({
       date: data.forecast.dates[i],
       mean: data.forecast.mean[i],
-      interval: [data.forecast.lower[i], data.forecast.upper[i]]
+      interval: [data.forecast.lower[i], data.forecast.upper[i]],
+      simulatedMean: simulatedData ? simulatedData.forecast.mean[i] : undefined,
+      simulatedInterval: simulatedData ? [simulatedData.forecast.lower[i], simulatedData.forecast.upper[i]] : undefined
     });
   }
 
@@ -250,6 +349,12 @@ export default function Forecast() {
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: modelColor }} />
               <span className="text-base-secondary">Forecast</span>
             </div>
+            {simulatedData && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 border-t-2 border-dashed border-[#10B981]" />
+                <span className="text-base-secondary">Simulated</span>
+              </div>
+            )}
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded-sm opacity-20" style={{ backgroundColor: modelColor }} />
               <span className="text-base-secondary">80% CI</span>
@@ -268,16 +373,172 @@ export default function Forecast() {
               formatter={(value: any, name: any) => {
                 if (name === 'Forecast') return [fmt(value, 1), name];
                 if (name === 'Actual') return [fmt(value, 1), name];
+                if (name === 'Simulated Scenario') return [fmt(value, 1), name];
                 return [value, name];
               }}
             />
             <ReferenceLine x={cutoffDate} stroke="#6E6E73" strokeDasharray="3 3" label={{ position: 'top', value: 'Today', fill: '#6E6E73', fontSize: 12 }} />
             <Area type="monotone" dataKey="interval" stroke="none" fill={modelColor} fillOpacity={0.15} activeDot={false} />
+            {simulatedData && (
+              <Area type="monotone" dataKey="simulatedInterval" stroke="none" fill="#10B981" fillOpacity={0.1} activeDot={false} />
+            )}
             <Line type="monotone" dataKey="actual" stroke="#111111" strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: '#111111', stroke: 'none' }} name="Actual" />
             <Line type="monotone" dataKey="mean" stroke={modelColor} strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: modelColor, stroke: 'none' }} name="Forecast" connectNulls />
+            {simulatedData && (
+              <Line 
+                type="monotone" 
+                dataKey="simulatedMean" 
+                stroke="#10B981" 
+                strokeWidth={2.5} 
+                strokeDasharray="4 4"
+                dot={false} 
+                activeDot={{ r: 4, fill: '#10B981', stroke: 'none' }} 
+                name="Simulated Scenario" 
+                connectNulls 
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* What-If Scenario Simulation Studio */}
+      {config.covariate_cols && config.covariate_cols.length > 0 && (
+        <div className="p-6 bg-white/60 backdrop-blur-md border border-base-secondary/20 rounded-2xl shadow-md space-y-6 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity size={20} className={clsx("text-emerald-500", isSimulating ? "animate-spin" : "animate-pulse")} />
+              <h3 className="text-lg font-bold text-base-primary">What-If Scenario Simulation Studio</h3>
+              <span className={clsx(
+                "px-2.5 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider transition-all",
+                isSimulating ? "bg-accent-pulse/10 text-accent-pulse animate-pulse" : "bg-emerald-500/10 text-emerald-600"
+              )}>
+                {isSimulating ? "Recalculating..." : "ARIMAX Exogenous Engine"}
+              </span>
+            </div>
+            <button 
+              onClick={() => setIsWhatIfOpen(!isWhatIfOpen)}
+              className="text-xs font-semibold text-base-secondary hover:text-base-primary transition-colors"
+            >
+              {isWhatIfOpen ? "Collapse Studio" : "Expand Studio"}
+            </button>
+          </div>
+
+          {isWhatIfOpen && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* Model warning if not ARIMA or Ensemble */}
+              {config.model_name !== 'ARIMA' && config.model_name !== 'Ensemble' && (
+                <div className="p-4 bg-accent-warning/10 border border-accent-warning/20 rounded-xl flex items-center gap-3">
+                  <AlertTriangle className="text-accent-warning shrink-0" size={20} />
+                  <div className="text-xs text-base-secondary leading-relaxed">
+                    <span className="font-bold text-accent-warning">ARIMAX Required: </span>
+                    What-If simulations require models supporting exogenous covariates.
+                    The current model <strong className="text-base-primary">{config.model_name}</strong> does not natively support future covariate overrides.
+                    <button 
+                      onClick={() => {
+                        const nextConfig = { ...config, model_name: 'ARIMA' };
+                        setConfig(nextConfig);
+                        localStorage.setItem('laplace_winner', 'ARIMA');
+                        loadForecast(nextConfig);
+                      }}
+                      className="ml-2 underline font-bold text-base-primary hover:text-base-primary/80"
+                    >
+                      Switch to ARIMA
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Covariate Selection Tabs */}
+              <div className="flex gap-2 border-b border-base-secondary/15 pb-3">
+                {config.covariate_cols.map((cov) => (
+                  <button
+                    key={cov}
+                    onClick={() => setActiveCovariateTab(cov)}
+                    className={clsx(
+                      "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                      activeCovariateTab === cov 
+                        ? "bg-[#111111] text-white shadow-sm" 
+                        : "bg-white text-base-secondary border border-base-secondary/20 hover:bg-base-surface"
+                    )}
+                  >
+                    {cov}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sliders Grid */}
+              {activeCovariateTab && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-xs font-semibold text-base-secondary uppercase">Future Timeline Adjustments</span>
+                      <p className="text-[11px] text-base-secondary">Modify the values of <strong className="text-base-primary">{activeCovariateTab}</strong> for each future forecast step.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const lastRow = datasetDetails?.chart_data?.[datasetDetails.chart_data.length - 1];
+                        const baseVal = lastRow && typeof lastRow[activeCovariateTab] === 'number' ? lastRow[activeCovariateTab] : 0;
+                        setFutureCovariates(prev => ({
+                          ...prev,
+                          [activeCovariateTab]: Array(data.horizon).fill(baseVal)
+                        }));
+                      }}
+                      className="px-2.5 py-1 text-[10px] font-bold text-base-secondary border border-base-secondary/20 rounded-md hover:bg-white hover:text-base-primary transition-all"
+                    >
+                      Reset to Baseline
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {Array.from({ length: data.horizon }).map((_, stepIdx) => {
+                      const dateLabel = data.forecast.dates[stepIdx];
+                      const currentVal = futureCovariates[activeCovariateTab]?.[stepIdx] ?? 0;
+                      
+                      // Get range from historical min/max
+                      const histVals = datasetDetails?.chart_data?.map(d => d[activeCovariateTab]).filter(v => typeof v === 'number') || [];
+                      const histMin = histVals.length > 0 ? Math.min(...histVals) : 0;
+                      const histMax = histVals.length > 0 ? Math.max(...histVals) : 100;
+                      const sliderMin = histMin >= 0 ? 0 : histMin * 1.5;
+                      const sliderMax = histMax === 0 ? 100 : histMax * 2.0;
+
+                      return (
+                        <div key={stepIdx} className="p-3 bg-white border border-base-secondary/15 rounded-xl space-y-2 flex flex-col justify-between shadow-sm">
+                          <div>
+                            <div className="text-[10px] font-bold text-base-secondary">{dateLabel}</div>
+                            <div className="text-[9px] text-base-secondary uppercase">Step {stepIdx + 1}</div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <input
+                              type="range"
+                              min={sliderMin}
+                              max={sliderMax}
+                              step={(sliderMax - sliderMin) / 100}
+                              value={currentVal}
+                              onChange={(e) => {
+                                const nextVal = parseFloat(e.target.value);
+                                setFutureCovariates(prev => {
+                                  const arr = [...(prev[activeCovariateTab] || [])];
+                                  arr[stepIdx] = nextVal;
+                                  return { ...prev, [activeCovariateTab]: arr };
+                                });
+                              }}
+                              className="w-full accent-emerald-500 cursor-pointer"
+                            />
+                            <div className="text-xs font-bold text-emerald-600 text-right">
+                              {fmt(currentVal, 1)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Empirical Calibration & Regime Controls */}
       {data.science_metadata && (
@@ -290,7 +551,10 @@ export default function Forecast() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={clsx(
+            "grid grid-cols-1 gap-6",
+            config.covariate_cols && config.covariate_cols.length > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
+          )}>
             {/* Conformal Prediction Panel */}
             <div className="p-4 bg-white/70 border border-base-secondary/15 rounded-xl space-y-2">
               <div className="flex justify-between items-center">
@@ -356,6 +620,63 @@ export default function Forecast() {
                 </div>
               </div>
             </div>
+
+            {/* Exogenous Elasticity & Sensitivity Card */}
+            {config.covariate_cols && config.covariate_cols.length > 0 && (
+              <div className="p-4 bg-white/70 border border-base-secondary/15 rounded-xl space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-base-primary">Empirical Exogenous Elasticity</span>
+                    <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 rounded-md">
+                      Sensitivity Analysis
+                    </span>
+                  </div>
+                  <p className="text-xs text-base-secondary leading-relaxed mt-2">
+                    Measures the predictive responsiveness of the target variable to unit adjustments in active exogenous drivers. Calculated live from the ARIMAX covariate transfer functions.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-2 border-t border-base-secondary/10">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[10px] text-base-secondary uppercase tracking-wider">Dynamic Multiplier</div>
+                      <div className={clsx(
+                        "text-xs font-bold mt-0.5",
+                        getSensitivityMultiplier() !== null && getSensitivityMultiplier()! !== 0 ? "text-emerald-600" : "text-base-primary"
+                      )}>
+                        {getSensitivityMultiplier() !== null
+                          ? `${getSensitivityMultiplier()! >= 0 ? '+' : ''}${fmt(getSensitivityMultiplier()!, 4)} units`
+                          : "No simulation shift"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-base-secondary uppercase tracking-wider">Historical Correlation</div>
+                      <div className="text-xs font-semibold text-base-primary mt-0.5">
+                        {(() => {
+                          const activeCov = activeCovariateTab;
+                          const cand = datasetDetails?.covariate_candidates?.find(c => c.column === activeCov);
+                          return cand ? `${cand.correlation >= 0 ? '+' : ''}${cand.correlation.toFixed(3)}` : "Analyzing...";
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calendar features didactics if present */}
+                  {(hasWeekendFeature || hasHolidayFeature) && (
+                    <div className="p-2 bg-[#111111]/5 rounded-lg border border-base-secondary/10">
+                      <div className="text-[10px] font-bold text-base-primary flex items-center gap-1.5">
+                        <ShieldAlert size={10} className="text-accent-pulse" />
+                        <span>Calendar Breaks &amp; Holiday Matrix</span>
+                      </div>
+                      <div className="text-[9px] text-base-secondary mt-1 leading-relaxed">
+                        {hasWeekendFeature && "✓ Weekly cycle calendar_is_weekend ingested. "}
+                        {hasHolidayFeature && "✓ US Federal holidays calendar_is_holiday mapped."}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

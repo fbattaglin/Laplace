@@ -31,15 +31,16 @@ def generate_forecast(req: ForecastRequest):
         logger.info(f"Generating true future forecast using model: {req.model_name}, horizon: {req.horizon}")
         from app.main import sanitize_float_values
         return sanitize_float_values(run_forecast(
-            df, 
-            req.date_col, 
-            req.target_col, 
-            req.model_name, 
-            req.horizon, 
-            req.covariate_cols,
-            req.cleaning_config,
-            req.excluded_anomalies,
-            req.ensemble_config
+            df=df, 
+            date_col=req.date_col, 
+            target_col=req.target_col, 
+            model_name=req.model_name, 
+            h=req.horizon, 
+            covariate_cols=req.covariate_cols,
+            cleaning_config=req.cleaning_config,
+            excluded_anomalies=req.excluded_anomalies,
+            ensemble_config=req.ensemble_config,
+            future_covariates=req.future_covariates
         ))
     except Exception as e:
         logger.error(f"Forecast generation failed: {e}")

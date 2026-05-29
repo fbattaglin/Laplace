@@ -109,14 +109,14 @@ def list_datasets():
             "description": "Daily Minimum Temperatures in Melbourne (1981-1990)",
             "problem_statement": "Environment: Predict local daily temperature variations to optimize municipal heating and cooling systems.",
             "tags": ["Classic", "Daily", "Seasonality"],
-            "has_covariates": False
+            "has_covariates": True
         },
         {
             "name": "website_traffic", 
             "description": "Wikipedia Page Views for Peyton Manning (Prophet Example)",
             "problem_statement": "Marketing: Forecast daily web page traffic, featuring strong weekly seasonality and extreme event-driven spikes.",
             "tags": ["Classic", "Daily", "Prophet", "Anomalies"],
-            "has_covariates": False
+            "has_covariates": True
         },
         {
             "name": "pharma_drug_sales", 
@@ -130,14 +130,14 @@ def list_datasets():
             "description": "US Consumer Price Index for All Urban Consumers (2000-2023)",
             "problem_statement": "Economics: Forecast macroeconomic inflation trends to project consumer buying power changes.",
             "tags": ["Economics", "Monthly", "FRED", "Trend"],
-            "has_covariates": False
+            "has_covariates": True
         },
         {
             "name": "us_retail_sales", 
             "description": "US Advance Retail Sales: Retail and Food Services (2005-2023)",
             "problem_statement": "Economics: Forecast aggregate consumer retail demand, including massive November/December holiday spikes.",
             "tags": ["Economics", "Monthly", "FRED", "Seasonal"],
-            "has_covariates": False
+            "has_covariates": True
         }
     ]
 
@@ -150,6 +150,12 @@ def get_dataset(name: str):
     
     try:
         df = pd.read_csv(file_path)
+        from app.services.heuristics import detect_columns
+        date_col, _ = detect_columns(df)
+        if date_col:
+            from app.services.covariates import add_calendar_features
+            df = add_calendar_features(df, date_col)
+            
         from app.main import sanitize_float_values
         return sanitize_float_values(process_dataframe(df))
     except Exception as e:
@@ -171,6 +177,12 @@ async def upload_dataset(file: UploadFile = File(...)):
         else:
             df = pd.read_excel(file_location)
         
+        from app.services.heuristics import detect_columns
+        date_col, _ = detect_columns(df)
+        if date_col:
+            from app.services.covariates import add_calendar_features
+            df = add_calendar_features(df, date_col)
+            
         logger.info(f"Successfully uploaded and parsed: {file.filename}")
         from app.main import sanitize_float_values
         return sanitize_float_values(process_dataframe(df))

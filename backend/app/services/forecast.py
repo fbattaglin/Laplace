@@ -26,7 +26,7 @@ def generate_future_dates(last_date: pd.Timestamp, freq_str: str, h: int) -> pd.
     except Exception:
         return pd.date_range(start=last_date, periods=h+1, freq='D')[1:]
 
-def _run_single_model(model_name: str, y: np.ndarray, h: int, period: int, freq_str: str, df: pd.DataFrame, date_col: str, covariate_cols: list = None):
+def _run_single_model(model_name: str, y: np.ndarray, h: int, period: int, freq_str: str, df: pd.DataFrame, date_col: str, covariate_cols: list = None, future_covariates: dict = None):
     """Run a single model and return {"mean": array, "lower": array, "upper": array} or None."""
     if model_name in CHRONOS_MODELS:
         past_covariates = None
@@ -55,10 +55,34 @@ def _run_single_model(model_name: str, y: np.ndarray, h: int, period: int, freq_
         sf_model = model_map.get(model_name)
         if sf_model is None:
             return None
+        
         df_train = pd.DataFrame({'unique_id': '1', 'ds': df[date_col], 'y': y})
+        X_df = None
+        
+        # StatsForecast ARIMA supports exogenous features automatically in the df_train DataFrame
+        if covariate_cols and model_name == 'ARIMA':
+            valid_cols = [c for c in covariate_cols if c in df.columns]
+            if valid_cols:
+                for col in valid_cols:
+                    df_train[col] = df[col].values
+                try:
+                    future_dates = pd.date_range(start=pd.to_datetime(df[date_col].iloc[-1]), periods=h+1, freq=freq_str)[1:]
+                    X_df = pd.DataFrame({'unique_id': '1', 'ds': future_dates})
+                    for col in valid_cols:
+                        if future_covariates and col in future_covariates:
+                            vals = list(future_covariates[col])
+                            if len(vals) < h:
+                                vals = vals + [vals[-1]] * (h - len(vals))
+                            X_df[col] = vals[:h]
+                        else:
+                            X_df[col] = df[col].iloc[-1]
+                except Exception as ex_err:
+                    logger.error(f"Failed to prepare future covariates in _run_single_model: {ex_err}")
+                    X_df = None
+
         sf = StatsForecast(models=[sf_model], freq=freq_str, n_jobs=1)
         sf.fit(df_train)
-        forecasts = sf.predict(h=h, level=[80])
+        forecasts = sf.predict(h=h, X_df=X_df, level=[80])
         col_prefix = model_name
         if model_name not in forecasts.columns:
             if model_name == 'ETS': col_prefix = 'AutoETS'
@@ -80,7 +104,8 @@ def run_forecast(
     covariate_cols: list = None,
     cleaning_config: list = None,
     excluded_anomalies: list = None,
-    ensemble_config: dict = None
+    ensemble_config: dict = None,
+    future_covariates: dict = None
 ) -> dict[str, any]:
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
@@ -134,7 +159,7 @@ def run_forecast(
             model_forecasts = {}
             for comp_name in component_models:
                 try:
-                    comp_result = _run_single_model(comp_name, y_fitted, h, period, freq_str, df_fitted, date_col, covariate_cols)
+                    comp_result = _run_single_model(comp_name, y_fitted, h, period, freq_str, df_fitted, date_col, covariate_cols, future_covariates)
                     if comp_result is not None:
                         model_forecasts[comp_name] = comp_result
                 except Exception as e:
@@ -187,33 +212,12 @@ def run_forecast(
             raise ValueError(f"TimesFM generation failed: {e}")
             
     else:
-        model_map = {
-            'SeasonalNaive': SeasonalNaive(season_length=period),
-            'ETS': AutoETS(season_length=period),
-            'Theta': AutoTheta(season_length=period),
-            'ARIMA': AutoARIMA(season_length=period)
-        }
-        
-        sf_model = model_map.get(model_name, AutoETS(season_length=period))
-        df_train = pd.DataFrame({
-            'unique_id': '1',
-            'ds': df_fitted[date_col],
-            'y': y_fitted
-        })
-        
-        sf = StatsForecast(models=[sf_model], freq=freq_str, n_jobs=1)
-        sf.fit(df_train)
-        forecasts = sf.predict(h=h, level=[80])
-        
-        col_prefix = model_name
-        if model_name not in forecasts.columns:
-            if model_name == 'ETS': col_prefix = 'AutoETS'
-            elif model_name == 'Theta': col_prefix = 'AutoTheta'
-            elif model_name == 'ARIMA': col_prefix = 'AutoARIMA'
-        
-        mean_pred = forecasts[col_prefix].values.tolist()
-        lower_pred = forecasts[f'{col_prefix}-lo-80'].values.tolist()
-        upper_pred = forecasts[f'{col_prefix}-hi-80'].values.tolist()
+        res = _run_single_model(model_name, y_fitted, h, period, freq_str, df_fitted, date_col, covariate_cols, future_covariates)
+        if res is None:
+            raise ValueError(f"Model {model_name} failed to generate forecast")
+        mean_pred = list(res["mean"])
+        lower_pred = list(res["lower"])
+        upper_pred = list(res["upper"])
 
     # Apply Conformal Prediction to calibrate intervals (80% level)
     conformal_half_width = compute_conformal_interval_half_width(

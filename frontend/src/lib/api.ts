@@ -234,6 +234,7 @@ export interface ForecastRequest {
   cleaning_config?: any[];
   excluded_anomalies?: number[];
   ensemble_config?: any;
+  future_covariates?: Record<string, number[]>;
 }
 
 export interface ForecastResponse {

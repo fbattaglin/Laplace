@@ -54,3 +54,4 @@ class ForecastRequest(BaseModel):
     cleaning_config: list[dict[str, Any]] | None = None
     excluded_anomalies: list[int] | None = None
     ensemble_config: dict[str, Any] | None = None
+    future_covariates: dict[str, list[float]] | None = None
