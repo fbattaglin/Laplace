@@ -279,14 +279,14 @@ export default function Forecast() {
         </ResponsiveContainer>
       </div>
 
-      {/* Principal Data Science Insights */}
+      {/* Empirical Calibration & Regime Controls */}
       {data.science_metadata && (
         <div className="p-6 bg-gradient-to-r from-base-surface to-base-surface/50 border border-base-secondary/25 rounded-2xl shadow-sm animate-in fade-in duration-300">
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="text-accent-pulse animate-pulse" size={22} />
-            <h3 className="text-xl font-bold text-base-primary">Principal Data Science Insights</h3>
-            <span className="px-2 py-0.5 text-[10px] font-bold bg-base-primary text-white rounded-full uppercase tracking-wider">
-              Sprint 1 Active
+            <Activity className="text-accent-pulse" size={20} />
+            <h3 className="text-lg font-bold text-base-primary">Empirical Calibration &amp; Regime Controls</h3>
+            <span className="px-2.5 py-0.5 text-[9px] font-semibold bg-[#111111] text-white rounded-md uppercase tracking-wider">
+              Empirical Safeguards
             </span>
           </div>
 
