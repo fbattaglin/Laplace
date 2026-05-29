@@ -1,6 +1,9 @@
+import logging
 import pandas as pd
 import numpy as np
 from app.services.covariates import analyze_covariates
+
+logger = logging.getLogger("laplace.services.heuristics")
 
 def detect_columns(df: pd.DataFrame) -> tuple[str | None, str | None]:
     """
@@ -82,7 +85,7 @@ def process_dataframe(df: pd.DataFrame) -> dict:
         try:
             covariate_candidates = analyze_covariates(df, date_col, target_col)
         except Exception as e:
-            print(f"Failed to analyze covariates: {e}")
+            logger.error(f"Failed to analyze covariates: {e}")
 
     return {
         "columns": columns,
