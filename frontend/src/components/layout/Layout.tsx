@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Database, CheckCircle, LineChart, Download, Check, RotateCcw, Briefcase, FlaskConical, ClipboardList } from 'lucide-react';
+import { Activity, Database, CheckCircle, LineChart, Download, Check, RotateCcw, Briefcase, FlaskConical } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { ModeProvider, useMode } from '../../context/ModeContext';
@@ -111,17 +111,7 @@ function LayoutInner() {
 
           {/* Actions Zone — Mode Toggle + Reset */}
           <div className="flex items-center gap-3 flex-shrink-0 mt-2">
-            {/* Run History (Lab Only) */}
-            {isLab && (
-              <button
-                onClick={() => navigate('/runs')}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-base-secondary hover:text-[#6366F1] hover:bg-[#6366F1]/10 rounded-full text-[11px] font-semibold uppercase tracking-wider transition-colors"
-                title="Run History"
-              >
-                <ClipboardList size={14} />
-                <span className="hidden lg:inline">Run History</span>
-              </button>
-            )}
+
 
             {/* Mode Toggle */}
             <div className="flex items-center bg-base-surface rounded-full p-0.5 border border-base-secondary/20">
