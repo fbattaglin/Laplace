@@ -67,20 +67,32 @@ Laplace prioritizes high-fidelity visuals and raw execution speed:
 
 ---
 
-## 🚀 Running Laplace locally
+## 🚀 Quick Start (Zero-Friction Setup)
 
-### Prerequisites
-- Node.js (v18+)
-- Python (v3.10+)
-- [uv](https://github.com/astral-sh/uv) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+No manual environment creation, package installation, or multi-terminal orchestration is required. Laplace features an **intelligent, self-bootstrapping supervisor** that automatically configures and launches the entire platform in a single command.
 
-### Booting the Stack
-To launch both the FastAPI backend and the React frontend in a single command, execute the startup script from the root directory:
+### 1. Prerequisites
+- **Python 3.10+** (installed and in your PATH)
+- **Node.js v18+ & NPM** (installed and in your PATH)
+
+*Note: Having [uv](https://github.com/astral-sh/uv) installed is highly recommended for 10x faster package installations, but standard Python virtual environments (`venv` and `pip`) will be used automatically as a robust fallback if `uv` is not present.*
+
+### 2. Boot the Sandbox
+Simply clone the repository and execute the supervisor startup script from the root directory:
 
 ```bash
+# Make the supervisor executable (first time only)
+chmod +x start.sh
+
+# Launch the unified supervisor
 ./start.sh
 ```
 
-The script will automatically kill any stale ports, boot the FastAPI engine, launch the Vite dev server, and orchestrate graceful shutdowns upon receiving `Ctrl+C`.
+### 3. How start.sh Orchestrates the Launch Automatically:
+- **System Verification:** Inspects Python, Node, and NPM versions on launch.
+- **Auto-Bootstrapping Backend:** Detects if `backend/.venv` is missing, automatically creates it (using `uv` or standard Python `venv`), and installs all Python dependencies.
+- **Auto-Bootstrapping Frontend:** Detects if `node_modules` is missing and automatically runs `npm install` inside the frontend directory.
+- **Port Conflict Management:** Clears stale process lockouts on ports `8000` (backend) and `5173` (frontend) to prevent binding failures.
+- **Live Health Diagnostics:** Actively polls the backend API `/api/health` endpoint and Vite server. If a startup failure is detected, it **terminates the sequence and prints the actual server logs directly to the terminal**, making troubleshooting instantaneous instead of failing silently.
 
-Access the sandbox at: `http://localhost:5173`.
+Access the active time-series sandbox at: **[http://localhost:5173](http://localhost:5173)**.
