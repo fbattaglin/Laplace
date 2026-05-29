@@ -1,8 +1,10 @@
+import logging
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any, Tuple
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
+
+logger = logging.getLogger("laplace.services.cleaning")
 
 def handle_missing_values(y: np.ndarray, method: str = "linear") -> np.ndarray:
     """
@@ -66,16 +68,14 @@ def apply_smoothing(y: np.ndarray, method: str = "sma", window: int = 3) -> np.n
         return s.ewm(span=window, min_periods=1).mean().values
     return y
 
-def apply_variance_transform(y: np.ndarray, method: str = "log") -> Tuple[np.ndarray, dict]:
+def apply_variance_transform(y: np.ndarray, method: str = "log") -> tuple[np.ndarray, dict]:
     """
     Apply variance stabilizing transform.
     Returns: (transformed_array, transform_params)
     Methods: 'log', 'boxcox'
     """
-    # Shift to ensure all values are positive
     min_val = np.min(y)
     shift = abs(min_val) + 1.0 if min_val <= 0 else 0.0
-    
     y_shifted = y + shift
     
     if method == "log":
@@ -109,31 +109,16 @@ def run_cleaning_pipeline(
     df: pd.DataFrame, 
     date_col: str, 
     target_col: str,
-    config: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+    config: list[dict[str, any]]
+) -> dict[str, any]:
     """
     Execute a pipeline of cleaning steps in order.
-    
-    config example:
-    [
-      {"type": "missing", "method": "linear"},
-      {"type": "outlier", "method": "iqr", "threshold": 1.5},
-      {"type": "smooth", "method": "sma", "window": 7},
-      {"type": "variance", "method": "log"}
-    ]
-    
-    Returns:
-        "cleaned_data": The fully cleaned series as a list
-        "variance_params": The parameters needed to invert the variance transform (if any)
-        "steps_log": Log of what was applied
     """
-    # Sort and extract target
     df_sorted = df.sort_values(by=date_col).copy()
     y = df_sorted[target_col].astype(float).values
     
     steps_log = []
     variance_params = {"method": "none", "shift": 0.0}
-    
     y_current = y.copy()
     
     for step in config:
@@ -162,6 +147,7 @@ def run_cleaning_pipeline(
                 y_current, variance_params = apply_variance_transform(y_current, method=method)
                 steps_log.append(f"Applied {method} variance transform")
 
+    logger.info(f"Completed cleaning pipeline: {', '.join(steps_log)}")
     return {
         "cleaned_data": y_current.tolist(),
         "variance_params": variance_params,
@@ -172,15 +158,11 @@ def preprocess_dataframe_for_modeling(
     df: pd.DataFrame,
     date_col: str,
     target_col: str,
-    cleaning_config: List[Dict[str, Any]] = None,
-    excluded_anomalies: List[int] = None
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    cleaning_config: list[dict[str, any]] | None = None,
+    excluded_anomalies: list[int] | None = None
+) -> tuple[pd.DataFrame, dict[str, any]]:
     """
-    Applies the selected data prep transformations (cleaning_config) and 
-    anomaly exclusions (excluded_anomalies) to the target column in the DataFrame.
-    
-    Returns:
-        (preprocessed_df, variance_params)
+    Applies the selected data prep transformations and anomaly exclusions to target column.
     """
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
@@ -193,8 +175,8 @@ def preprocess_dataframe_for_modeling(
             if 0 <= idx < len(y):
                 y[idx] = np.nan
         df[target_col] = y
-        # Interpolate NaNs resulting from anomaly exclusion
         df[target_col] = df[target_col].interpolate(method='linear').bfill().ffill()
+        logger.info(f"Excluded and interpolated {len(excluded_anomalies)} anomaly indices.")
         
     variance_params = {"method": "none", "shift": 0.0}
     
@@ -225,7 +207,7 @@ def preprocess_dataframe_for_modeling(
     # 3. Safety Fallback: Ensure no NaNs or Infs remain in the target column
     y_final = df[target_col].astype(float).values.copy()
     if np.isnan(y_final).any() or np.isinf(y_final).any():
-        print("[Safety Fallback] Target column contains NaNs/Infs. Automatically applying linear interpolation to ensure pipeline convergence.")
+        logger.warning("[Safety Fallback] Target column contains NaNs/Infs. Applying automatic linear interpolation.")
         y_final = handle_missing_values(y_final, method="linear")
         df[target_col] = y_final
         

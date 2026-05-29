@@ -1,13 +1,17 @@
+import logging
 import pandas as pd
 import numpy as np
-import math
 from statsmodels.tsa.seasonal import STL
 from statsmodels.tsa.stattools import acf, pacf, adfuller
-from sklearn.ensemble import IsolationForest
 import ruptures as rpt
 from scipy.stats import skew, kurtosis
 
-def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
+from app.services.anomalies import detect_anomalies_isolation_forest
+from app.services.covariates import analyze_covariates
+
+logger = logging.getLogger("laplace.services.diagnostics")
+
+def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str) -> dict[str, any]:
     """
     Computes STL decomposition, ACF, PACF, Forecastability Score, Basic Stats, 
     Anomalies (Isolation Forest), and Changepoints (Ruptures).
@@ -16,10 +20,8 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values(date_col).set_index(date_col)
     
-    # Pre-interpolation data for stats
     y_raw = df[target_col].astype(float)
     
-    # Basic Stats
     stats = {
         "start_date": str(df.index.min().date()) if hasattr(df.index.min(), 'date') else str(df.index.min()),
         "end_date": str(df.index.max().date()) if hasattr(df.index.max(), 'date') else str(df.index.max()),
@@ -34,7 +36,6 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         "kurtosis": float(np.round(kurtosis(y_raw.dropna()), 2))
     }
     
-    # Interpolate
     y = y_raw.interpolate(method='linear').bfill().ffill()
     n = len(y)
     
@@ -53,7 +54,6 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
 
     period = min(period, max(2, n // 2 - 1))
     
-    # 1. STL Decomposition
     try:
         stl = STL(y, period=period, robust=True)
         res = stl.fit()
@@ -70,11 +70,10 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         
         trend_strength = max(0, 1 - var_resid / var_trend_resid) if var_trend_resid > 0 else 0
         seasonal_strength = max(0, 1 - var_resid / var_seas_resid) if var_seas_resid > 0 else 0
-        # Raw STL signal-to-noise (R²)
         signal_r2 = max(0, 1 - var_resid / var_orig) if var_orig > 0 else 0
         
     except Exception as e:
-        print(f"STL Error: {e}")
+        logger.error(f"STL Decomposition failure: {e}")
         trend = observed = y.tolist()
         seasonal = [0]*n
         resid = [0]*n
@@ -82,54 +81,29 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
         trend_strength = 0
         seasonal_strength = 0
 
-    # ── Rigorous Forecastability Score ─────────────────────────────────────
-    # The fundamental question is: "do past values help predict future values?"
-    # STL R² alone is misleading: a pure random walk has R²≈1 because STL
-    # always finds a trend. The correct approach tests the INNOVATIONS (differences).
-
-    # Factor 1: Persistence of structure in differenced series
-    #   A random walk after differencing → white noise (ACF ≈ 0)
-    #   A seasonal/trending series after differencing → retains autocorrelation
-    #   This is the PRIMARY discriminator between predictable and unpredictable series.
     try:
         y_diff = y.diff().dropna()
         nlags_acf = min(max(period + 2, 8), len(y_diff) // 2 - 1)
         acf_diff_vals = acf(y_diff, nlags=nlags_acf, fft=True)
-        # Mean |ACF| at lags 1 to min(period, 12): captures seasonal/AR memory
         upper_lag = min(period, 12)
         mean_acf_diff = float(np.mean(np.abs(acf_diff_vals[1:upper_lag + 1])))
-        # Scale: ≥0.4 ACF → strong memory (score 1.0); ≤0.02 → random walk (score 0)
         f_persistence = min(1.0, max(0.0, (mean_acf_diff - 0.02) / 0.38))
     except Exception:
         f_persistence = 0.3
 
-    # Factor 2: Signal purity from STL (how much structure vs residual noise)
-    #   Weight reduced: it's informative but not sufficient alone.
-    f_signal = signal_r2  # already in [0,1]
-
-    # Factor 3: Coefficient of Variation (volatility relative to level)
-    #   Crypto / meme stocks: CV >> 1 → highly unstable magnitude → penalise
-    #   Stable demand series: CV < 0.3 → no penalty
+    f_signal = signal_r2
     mean_val = float(np.abs(y.mean()))
     cv = float(y.std() / mean_val) if mean_val > 1e-8 else 2.0
     f_stability = max(0.3, 1.0 - 0.7 * min((cv - 0.2) / 1.8, 1.0))
-
-    # Factor 4: Data length adequacy (more data = more reliable patterns)
-    #   < 2×period: very short, penalise heavily
-    #   ≥ 4×period: full credit
     f_length = min(1.0, max(0.3, (n - period) / (3 * period)))
 
-    # ── Composite Score ──────────────────────────────────────────────────────
-    # Persistence of differenced ACF is the strongest signal (50% weight):
-    #   it correctly marks random walks as low-score regardless of trend strength.
     raw_score = (
-        0.50 * f_persistence +   # ACF of differences: primary predictor
-        0.25 * f_signal +        # STL R²: structural content
-        0.15 * f_stability +     # Volatility: stability of level
-        0.10 * f_length          # Data adequacy
+        0.50 * f_persistence +
+        0.25 * f_signal +
+        0.15 * f_stability +
+        0.10 * f_length
     )
-    score_val = float(raw_score * 100)
-    score_val = min(100.0, max(0.0, score_val))
+    score_val = min(100.0, max(0.0, float(raw_score * 100)))
 
     if score_val >= 72:
         score_label = "High — Strong, repeatable structure. Good forecast conditions."
@@ -140,44 +114,34 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
     else:
         score_label = "Very Low — Near-random behavior. Use forecasts as wide scenarios only."
 
-
-    # 2. ACF and PACF
     nlags = min(40, n // 2 - 1)
     try:
         acf_vals = acf(y, nlags=nlags, fft=True).tolist()
         pacf_vals = pacf(y, nlags=nlags, method='ywm').tolist()
-    except:
+    except Exception as e:
+        logger.error(f"ACF/PACF calculation error: {e}")
         acf_vals = []
         pacf_vals = []
 
-    # 3. Anomaly Detection (Isolation Forest)
     anomalies = []
     try:
-        from anomaly import detect_anomalies_isolation_forest
         anomalies = detect_anomalies_isolation_forest(np.array(y), threshold=0.05)
     except Exception as e:
-        print(f"Anomaly detection error: {e}")
-    # 4. Trend Changepoints (Ruptures Binseg)
+        logger.error(f"Anomaly detection execution error: {e}")
+
     changepoints = []
     try:
-        # Binary segmentation on the trend or raw data
-        # We use trend to avoid seasonal noise triggering changes
         signal = np.array(trend).reshape(-1, 1)
         algo = rpt.Binseg(model="l2").fit(signal)
-        # 1 changepoint per 100 points roughly, max 5
         n_bkps = min(5, max(1, n // 100))
         result = algo.predict(n_bkps=n_bkps)
-        # ruptures returns the index of the changepoints (end points of segments)
-        # remove the last index which is just the length of the array
         if result and result[-1] == n:
             result = result[:-1]
         changepoints = result
     except Exception as e:
-        print(f"Changepoint detection error: {e}")
+        logger.error(f"Changepoint detection error: {e}")
 
-    # 5. Stationarity Test (Augmented Dickey-Fuller)
     try:
-        # We test stationarity on the interpolated series
         adf_result = adfuller(y.dropna())
         adf_test = {
             "test_statistic": float(round(adf_result[0], 3)),
@@ -185,28 +149,27 @@ def compute_diagnostics(df: pd.DataFrame, date_col: str, target_col: str):
             "is_stationary": bool(adf_result[1] < 0.05)
         }
     except Exception as e:
-        print(f"ADF test error: {e}")
+        logger.error(f"ADF test error: {e}")
         adf_test = {
             "test_statistic": 0.0,
             "p_value": 1.0,
             "is_stationary": False
         }
 
-    # 6. Covariates Analysis
     covariates = []
     try:
-        from covariates import analyze_covariates
         covariates = analyze_covariates(df, date_col, target_col)
     except Exception as e:
-        print(f"Failed to analyze covariates in diagnostics: {e}")
+        logger.error(f"Covariates calculation error inside diagnostics: {e}")
 
     dates = df.index.astype(str).tolist()
 
+    logger.info("Diagnostics and statistical EDA computation complete.")
     return {
         "dates": dates,
         "stats": stats,
-        "anomalies": anomalies, # list of indices
-        "changepoints": changepoints, # list of indices
+        "anomalies": anomalies,
+        "changepoints": changepoints,
         "stl": {
             "observed": observed,
             "trend": trend,

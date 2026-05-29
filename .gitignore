@@ -21,6 +21,8 @@ backend/data/*.xlsx
 # We explicitly want to track the reference datasets:
 !backend/data/air_passengers.csv
 !backend/data/daily_temperatures.csv
+!backend/data/canadian_lynx.csv
+!backend/data/monthly_sunspots.csv
 
 # Frontend (React / Vite / node)
 frontend/node_modules/

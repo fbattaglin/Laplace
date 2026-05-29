@@ -1,37 +1,39 @@
-import pandas as pd
-import numpy as np
 import time
 import math
-from typing import Dict, List, Any, Optional
-import torch
+import logging
+import pandas as pd
+import numpy as np
 from statsforecast import StatsForecast
 from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive, AutoARIMA, RandomWalkWithDrift, HistoricAverage
-from model_registry import registry
 
-def smape(y_true, y_pred):
-    return np.mean(2.0 * np.abs(y_pred - y_true) / (np.abs(y_pred) + np.abs(y_true) + 1e-8)) * 100
+from app.core.model_registry import registry
+from app.services.cleaning import preprocess_dataframe_for_modeling, inverse_variance_transform
+from app.services.covariates import align_covariates
 
-def mase(y_true, y_pred, y_train, period):
+logger = logging.getLogger("laplace.services.validation")
+
+def smape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return float(np.mean(2.0 * np.abs(y_pred - y_true) / (np.abs(y_pred) + np.abs(y_true) + 1e-8)) * 100)
+
+def mase(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray, period: int) -> float:
     if len(y_train) <= period:
         return np.nan
     naive_err = np.mean(np.abs(y_train[period:] - y_train[:-period]))
     if naive_err == 0:
         return np.nan
-    return np.mean(np.abs(y_pred - y_true)) / naive_err
+    return float(np.mean(np.abs(y_pred - y_true)) / naive_err)
 
-def rmse(y_true, y_pred):
-    return np.sqrt(np.mean((y_true - y_pred)**2))
+def rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    return float(np.sqrt(np.mean((y_true - y_pred)**2)))
 
 def compute_diebold_mariano(actual: np.ndarray, pred1: np.ndarray, pred2: np.ndarray) -> float:
     """
     Computes a t-test based Diebold-Mariano p-value comparing absolute errors of pred1 vs pred2.
-    pred1 is the candidate winner (lower error), pred2 is the comparison baseline (usually SeasonalNaive).
-    Returns a p-value between 0.0 and 1.0.
     """
     try:
         e1 = np.abs(actual - pred1)
         e2 = np.abs(actual - pred2)
-        d = e2 - e1  # positive means pred1 has smaller error
+        d = e2 - e1
         n = len(d)
         if n < 3:
             return 1.0
@@ -43,7 +45,6 @@ def compute_diebold_mariano(actual: np.ndarray, pred1: np.ndarray, pred2: np.nda
             
         t_stat = mean_d / np.sqrt(var_d / n)
         
-        # Two-sided p-value using a manual standard normal approximation (bulletproof fallback)
         def normal_cdf(x):
             return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
             
@@ -55,7 +56,7 @@ def compute_diebold_mariano(actual: np.ndarray, pred1: np.ndarray, pred2: np.nda
             
         return float(np.clip(p_val, 0.0, 1.0))
     except Exception as e:
-        print(f"Diebold-Mariano calculation failed: {e}")
+        logger.error(f"Diebold-Mariano calculation failed: {e}")
         return 1.0
 
 MODEL_KEY_TO_CLEAN = {
@@ -74,29 +75,25 @@ def run_backtest(
     date_col: str, 
     target_col: str, 
     h: int = 12, 
-    selected_models: List[str] = None, 
-    covariate_cols: List[str] = None,
-    cleaning_config: List[dict] = None,
-    excluded_anomalies: List[int] = None,
+    selected_models: list[str] | None = None, 
+    covariate_cols: list[str] | None = None,
+    cleaning_config: list[dict] | None = None,
+    excluded_anomalies: list[int] | None = None,
     validation_type: str = "holdout",
     num_splits: int = 3,
-    ensemble_config: dict = None
-):
+    ensemble_config: dict | None = None
+) -> dict[str, any]:
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values(date_col)
     
-    # Apply preprocessing pipeline
-    from data_cleaning import preprocess_dataframe_for_modeling
     df_clean, variance_params = preprocess_dataframe_for_modeling(df, date_col, target_col, cleaning_config, excluded_anomalies)
     
     y = df_clean[target_col].astype(float).values
     dates = df_clean[date_col].astype(str).values
     n = len(y)
     
-    # Setup splits for cross-validation
     if validation_type == "walk_forward":
-        # Ensure we have enough history to train on (min train size = max(2*h, 10))
         min_train_len = max(2 * h, 10)
         actual_splits = num_splits
         while actual_splits > 1 and n - (actual_splits * h) < min_train_len:
@@ -112,7 +109,6 @@ def run_backtest(
         validation_type = "holdout"
         actual_splits = 1
         
-    # Generate split bounds
     splits_data = []
     if validation_type == "walk_forward":
         for i in range(actual_splits):
@@ -128,11 +124,9 @@ def run_backtest(
             "test_end": n
         }]
         
-    # Setup models list
     if selected_models is None:
         selected_models = ['SeasonalNaive', 'AutoETS', 'AutoTheta', 'AutoARIMA', 'Chronos-2', 'TimesFM-200M']
 
-    # Frequencies and periods
     period = 12
     inferred_freq = pd.infer_freq(df_clean[date_col])
     freq_str = 'D'
@@ -153,13 +147,9 @@ def run_backtest(
     split_rmses = {name: [] for name in clean_model_names}
     all_split_actuals = []
     
-    # Store predictions of the LAST split to serve as the visual overlay in the UI chart
     last_predictions = {}
-    
     has_variance_transform = (variance_params and variance_params.get("method") != "none")
-    from data_cleaning import inverse_variance_transform
 
-    # Run backtesting over splits
     for s_idx, split in enumerate(splits_data):
         t_start = split["test_start"]
         t_end = split["test_end"]
@@ -175,7 +165,6 @@ def run_backtest(
             
         all_split_actuals.extend(y_te_original.tolist())
         
-        # 1. Classical statsforecast models
         classical_models = []
         if 'SeasonalNaive' in selected_models: classical_models.append(SeasonalNaive(season_length=period))
         if 'AutoETS' in selected_models: classical_models.append(AutoETS(season_length=period))
@@ -192,7 +181,6 @@ def run_backtest(
                 sf.fit(df_sf)
                 sf_preds = sf.predict(h=h)
                 
-                # Distribute inference latency equally among fitted models
                 dt = (time.time() - t0) / len(classical_models)
                 
                 for m in classical_models:
@@ -201,7 +189,6 @@ def run_backtest(
                     
                     preds = sf_preds[col_name].values
                     clean_name = MODEL_KEY_TO_CLEAN.get(m_name, m_name)
-                    
                     execution_times[clean_name] += dt
                     
                     preds_original = preds.copy()
@@ -216,21 +203,19 @@ def run_backtest(
                     split_mases[clean_name].append(mase(y_te_original, preds_original, y_tr_original, period))
                     split_rmses[clean_name].append(rmse(y_te_original, preds_original))
             except Exception as e:
-                print(f"StatsForecast error in split {s_idx}: {e}")
+                logger.error(f"StatsForecast error in split {s_idx}: {e}")
                 
-        # 2. Chronos Foundation Model
         if 'Chronos-2' in selected_models:
             t0 = time.time()
             try:
                 past_covariates = None
                 if covariate_cols:
                     try:
-                        from covariates import align_covariates
                         cov_data = align_covariates(df_clean, h, covariate_cols)
                         if cov_data["past_covariates"] is not None:
                             past_covariates = cov_data["past_covariates"][:t_start]
                     except Exception as e:
-                        print(f"Failed to align covariates: {e}")
+                        logger.error(f"Failed to align covariates: {e}")
                 
                 mean_pred, _, _ = registry.predict_chronos2(y_tr, h, past_covariates=past_covariates)
                 dt = time.time() - t0
@@ -248,9 +233,8 @@ def run_backtest(
                 split_mases['Chronos-2'].append(mase(y_te_original, preds_original, y_tr_original, period))
                 split_rmses['Chronos-2'].append(rmse(y_te_original, preds_original))
             except Exception as e:
-                print(f"Chronos skips in split {s_idx}: {e}")
+                logger.error(f"Chronos generation failed in split {s_idx}: {e}")
 
-        # 3. TimesFM
         if 'TimesFM-200M' in selected_models:
             t0 = time.time()
             try:
@@ -270,16 +254,16 @@ def run_backtest(
                 split_mases['TimesFM-200M'].append(mase(y_te_original, preds_original, y_tr_original, period))
                 split_rmses['TimesFM-200M'].append(rmse(y_te_original, preds_original))
             except Exception as e:
-                print(f"TimesFM skips in split {s_idx}: {e}")
+                logger.error(f"TimesFM generation failed in split {s_idx}: {e}")
 
-    # ── Ensemble calculation ───────────────────────────────────────────
+    # Ensemble Calculation
     if len(clean_model_names) >= 2:
         clean_model_names.append("Ensemble")
         all_split_predictions["Ensemble"] = []
         split_errors["Ensemble"] = []
         split_mases["Ensemble"] = []
         split_rmses["Ensemble"] = []
-        execution_times["Ensemble"] = 0.02  # negligible overhead
+        execution_times["Ensemble"] = 0.02
         
         last_ensemble_weights = {}
         last_strategy = "inverse_smape"
@@ -297,7 +281,6 @@ def run_backtest(
                 y_tr_original = inverse_variance_transform(y_tr, variance_params)
                 y_te_original = inverse_variance_transform(y_te, variance_params)
                 
-            # Build split metrics to compute weights
             split_metrics = []
             for name in clean_model_names:
                 if name == "Ensemble": continue
@@ -307,7 +290,6 @@ def run_backtest(
                         "sMAPE": split_errors[name][s_idx]
                     })
             
-            # Compute weights based on ensemble_config
             strategy = "inverse_smape"
             custom_weights = None
             if ensemble_config:
@@ -329,14 +311,13 @@ def run_backtest(
                 weights = {m: 1.0 / len(top_models) for m in top_models}
                 
             if not weights or strategy == "inverse_smape":
-                from ensemble import compute_ensemble_weights
+                from app.services.ensemble import compute_ensemble_weights
                 weights = compute_ensemble_weights(split_metrics, top_n=3)
                 
             if s_idx == len(splits_data) - 1:
                 last_ensemble_weights = weights
                 last_strategy = strategy
                 
-            # Build predictions
             ensemble_preds = np.zeros(h)
             total_weight = 0.0
             for name, w in weights.items():
@@ -355,7 +336,6 @@ def run_backtest(
             split_mases["Ensemble"].append(mase(y_te_original, ensemble_preds, y_tr_original, period))
             split_rmses["Ensemble"].append(rmse(y_te_original, ensemble_preds))
 
-    # Compute averaged metrics for the leaderboard
     metrics_summary = []
     for name in clean_model_names:
         errors = split_errors[name]
@@ -384,10 +364,8 @@ def run_backtest(
                 
             metrics_summary.append(summary)
             
-    # Sort leaderboard by sMAPE ascending (best first)
     metrics_summary.sort(key=lambda x: x["sMAPE"])
 
-    # Compute Diebold-Mariano p-value between winner and SeasonalNaive baseline
     dm_p_value = 1.0
     dm_comparison_model = "SeasonalNaive"
     if len(metrics_summary) > 1:
@@ -399,7 +377,6 @@ def run_backtest(
             if len(actual_all) == len(pred_winner) == len(pred_baseline):
                 dm_p_value = compute_diebold_mariano(actual_all, pred_winner, pred_baseline)
 
-    # Predictions Overlay of the LAST split
     last_actual_original = y[-h:]
     if has_variance_transform:
         last_actual_original = inverse_variance_transform(last_actual_original, variance_params)
@@ -411,12 +388,12 @@ def run_backtest(
     for name, preds in last_predictions.items():
         predictions_payload[name] = preds
 
-    # History original scale
     last_split_t_start = splits_data[-1]["test_start"]
     y_train_original = y[:last_split_t_start]
     if has_variance_transform:
         y_train_original = inverse_variance_transform(y_train_original, variance_params)
 
+    logger.info(f"Backtest validation successful. Completed {len(splits_data)} splits using {validation_type}.")
     return {
         "horizon": h,
         "metrics": metrics_summary,

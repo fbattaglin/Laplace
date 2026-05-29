@@ -19,7 +19,7 @@ else
     echo "❌ Error: Virtual environment (.venv) not found in backend/. Please run 'uv venv' and install requirements."
     exit 1
 fi
-uvicorn main:app --reload --port 8000 > backend.log 2>&1 &
+uvicorn app.main:app --reload --port 8000 > backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
 
