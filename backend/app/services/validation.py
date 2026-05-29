@@ -9,6 +9,7 @@ from statsforecast.models import AutoETS, AutoTheta, SeasonalNaive, AutoARIMA, R
 from app.core.model_registry import registry
 from app.services.cleaning import preprocess_dataframe_for_modeling, inverse_variance_transform
 from app.services.covariates import align_covariates
+from app.services.changepoint_adaptation import adapt_training_data_for_shocks
 
 logger = logging.getLogger("laplace.services.validation")
 
@@ -157,6 +158,11 @@ def run_backtest(
         y_tr = y[:t_start]
         y_te = y[t_start:t_end]
         
+        # Apply Changepoint-Aware Adaptive Training on the training slice
+        y_tr_fitted, df_tr_fitted, shock_idx = adapt_training_data_for_shocks(
+            y_tr, df_clean.iloc[:t_start], period, date_col, target_col
+        )
+        
         y_tr_original = y_tr.copy()
         y_te_original = y_te.copy()
         if has_variance_transform:
@@ -176,7 +182,7 @@ def run_backtest(
         if classical_models:
             t0 = time.time()
             try:
-                df_sf = pd.DataFrame({'unique_id': '1', 'ds': df_clean[date_col].iloc[:t_start], 'y': y_tr})
+                df_sf = pd.DataFrame({'unique_id': '1', 'ds': df_tr_fitted[date_col], 'y': y_tr_fitted})
                 sf = StatsForecast(models=classical_models, freq=freq_str, n_jobs=1)
                 sf.fit(df_sf)
                 sf_preds = sf.predict(h=h)
@@ -211,13 +217,13 @@ def run_backtest(
                 past_covariates = None
                 if covariate_cols:
                     try:
-                        cov_data = align_covariates(df_clean, h, covariate_cols)
+                        cov_data = align_covariates(df_tr_fitted, h, covariate_cols)
                         if cov_data["past_covariates"] is not None:
-                            past_covariates = cov_data["past_covariates"][:t_start]
+                            past_covariates = cov_data["past_covariates"]
                     except Exception as e:
                         logger.error(f"Failed to align covariates: {e}")
                 
-                mean_pred, _, _ = registry.predict_chronos2(y_tr, h, past_covariates=past_covariates)
+                mean_pred, _, _ = registry.predict_chronos2(y_tr_fitted, h, past_covariates=past_covariates)
                 dt = time.time() - t0
                 execution_times['Chronos-2'] += dt
                 
@@ -234,11 +240,11 @@ def run_backtest(
                 split_rmses['Chronos-2'].append(rmse(y_te_original, preds_original))
             except Exception as e:
                 logger.error(f"Chronos generation failed in split {s_idx}: {e}")
-
+ 
         if 'TimesFM-200M' in selected_models:
             t0 = time.time()
             try:
-                mean_pred, _, _ = registry.predict_timesfm(y_tr, h)
+                mean_pred, _, _ = registry.predict_timesfm(y_tr_fitted, h)
                 dt = time.time() - t0
                 execution_times['TimesFM-200M'] += dt
                 

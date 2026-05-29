@@ -10,6 +10,8 @@ from app.core.model_registry import registry
 from app.services.cleaning import preprocess_dataframe_for_modeling, inverse_variance_transform
 from app.services.ensemble import build_ensemble_forecast
 from app.services.covariates import align_covariates
+from app.services.conformal import compute_conformal_interval_half_width
+from app.services.changepoint_adaptation import adapt_training_data_for_shocks
 
 logger = logging.getLogger("laplace.services.forecast")
 
@@ -103,6 +105,9 @@ def run_forecast(
         elif 'm' in f_lower: period = 12
     elif n > 14 and n < 100: period = 7
     
+    # Apply Changepoint-Aware Adaptive Training (detects severe shocks)
+    y_fitted, df_fitted, shock_idx = adapt_training_data_for_shocks(y, df_clean, period, date_col, target_col)
+    
     future_dates_dt = generate_future_dates(dates[-1], freq_str, h)
     future_dates = future_dates_dt.astype(str).tolist()
     
@@ -129,7 +134,7 @@ def run_forecast(
             model_forecasts = {}
             for comp_name in component_models:
                 try:
-                    comp_result = _run_single_model(comp_name, y, h, period, freq_str, df_clean, date_col, covariate_cols)
+                    comp_result = _run_single_model(comp_name, y_fitted, h, period, freq_str, df_fitted, date_col, covariate_cols)
                     if comp_result is not None:
                         model_forecasts[comp_name] = comp_result
                 except Exception as e:
@@ -157,13 +162,13 @@ def run_forecast(
             past_covariates = None
             if covariate_cols:
                 try:
-                    cov_data = align_covariates(df_clean, h, covariate_cols)
+                    cov_data = align_covariates(df_fitted, h, covariate_cols)
                     if cov_data["past_covariates"] is not None:
                         past_covariates = cov_data["past_covariates"]
                 except Exception as e:
                     logger.error(f"Failed to align covariates: {e}")
                     
-            mean_pred, lower_pred, upper_pred = registry.predict_chronos2(y, h, past_covariates=past_covariates)
+            mean_pred, lower_pred, upper_pred = registry.predict_chronos2(y_fitted, h, past_covariates=past_covariates)
             mean_pred = mean_pred.tolist()
             lower_pred = lower_pred.tolist()
             upper_pred = upper_pred.tolist()
@@ -173,7 +178,7 @@ def run_forecast(
             
     elif model_name == "TimesFM-200M":
         try:
-            mean_pred, lower_pred, upper_pred = registry.predict_timesfm(y, h)
+            mean_pred, lower_pred, upper_pred = registry.predict_timesfm(y_fitted, h)
             mean_pred = mean_pred.tolist()
             lower_pred = lower_pred.tolist()
             upper_pred = upper_pred.tolist()
@@ -192,8 +197,8 @@ def run_forecast(
         sf_model = model_map.get(model_name, AutoETS(season_length=period))
         df_train = pd.DataFrame({
             'unique_id': '1',
-            'ds': df_clean[date_col],
-            'y': y
+            'ds': df_fitted[date_col],
+            'y': y_fitted
         })
         
         sf = StatsForecast(models=[sf_model], freq=freq_str, n_jobs=1)
@@ -209,6 +214,22 @@ def run_forecast(
         mean_pred = forecasts[col_prefix].values.tolist()
         lower_pred = forecasts[f'{col_prefix}-lo-80'].values.tolist()
         upper_pred = forecasts[f'{col_prefix}-hi-80'].values.tolist()
+
+    # Apply Conformal Prediction to calibrate intervals (80% level)
+    conformal_half_width = compute_conformal_interval_half_width(
+        y=y,
+        model_name=model_name,
+        h=h,
+        period=period,
+        freq_str=freq_str,
+        df=df_clean,
+        date_col=date_col,
+        covariate_cols=covariate_cols,
+        level=80.0
+    )
+    if conformal_half_width is not None:
+        lower_pred = [float(m - conformal_half_width) for m in mean_pred]
+        upper_pred = [float(m + conformal_half_width) for m in mean_pred]
 
     y_original = y.copy()
     mean_original = np.array(mean_pred)
